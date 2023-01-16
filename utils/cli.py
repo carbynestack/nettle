@@ -43,7 +43,7 @@ class CLI:
         return envs;
 
     def create_secret(self, values):
-        return docker.run("carbynestack/cs-jar", ["amphora", "create-secret", ' '.join(map(str, values))], envs=self.get_envs())
+        return docker.run("carbynestack/cs-jar", ["amphora", "create-secret"] + list(map(str, values)), envs=self.get_envs())
 
     def get_secret(self, identifier):
         return docker.run("carbynestack/cs-jar", ["amphora", "get-secret", identifier], envs=self.get_envs())
