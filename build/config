@@ -1,0 +1,24 @@
+{
+  "prime" : 198766463529478683931867765928436695041,
+  "r" : 141515903391459779531506841503331516415,
+  "noSslValidation" : true,
+  "trustedCertificates" : [ ],
+  "providers" : [ {
+    "ephemeralServiceUrl" : "http://172.18.1.128.sslip.io/",
+    "id" : 1,
+    "baseUrl" : "http://172.18.1.128.sslip.io/",
+    "amphoraServiceUrl" : "http://172.18.1.128.sslip.io/amphora",
+    "castorServiceUrl" : "http://172.18.1.128.sslip.io/castor",
+    "oauth2ClientId" : "",
+    "oauth2CallbackUrl" : ""
+  }, {
+    "ephemeralServiceUrl" : "http://172.18.2.128.sslip.io/",
+    "id" : 2,
+    "baseUrl" : "http://172.18.2.128.sslip.io/",
+    "amphoraServiceUrl" : "http://172.18.2.128.sslip.io/amphora",
+    "castorServiceUrl" : "http://172.18.2.128.sslip.io/castor",
+    "oauth2ClientId" : "",
+    "oauth2CallbackUrl" : ""
+  } ],
+  "rinv" : 133854242216446749056083838363708373830
+}
