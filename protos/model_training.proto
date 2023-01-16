@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message TrainModelParameters {
+}
+
+message TrainModelResult {
+   string finalModelSecretId = 1;
+}
+
+service ModelTraining {
+   rpc TrainModel(TrainModelParameters) returns (TrainModelResult) {}
+}
