@@ -12,7 +12,7 @@ cli = CLI(
         Provider(base_url="http://starbuck.bocse.carbynestack.io/")
     ])
 
-secret_id = cli.create_secret([5]);
+secret_id = cli.create_secret(tags={"message":"howdy", "type":"magic"}, values=[5, 15, 25]);
 print(secret_id)
 print(cli.get_secret(secret_id))
 """
@@ -26,7 +26,7 @@ class CLI:
         self.r_inv = r_inv
         self.providers = providers
 
-    def get_envs(self):
+    def get_envs(self) -> dict:
         envs = {
             "CS_PRIME": self.prime,
             "CS_R": self.r,
@@ -42,11 +42,28 @@ class CLI:
 
         return envs;
 
-    def create_secret(self, values):
-        return docker.run("carbynestack/cs-jar", ["amphora", "create-secret"] + list(map(str, values)), envs=self.get_envs())
+    def create_secret(self, tags: dict, values: list) -> str:
+        return docker.run("carbynestack/cs-jar", ["amphora", "create-secret"] + map_tags(tags) + list(map(str, values)), envs=self.get_envs())
 
-    def get_secret(self, identifier):
+    def get_secret(self, identifier) -> str:
         return docker.run("carbynestack/cs-jar", ["amphora", "get-secret", identifier], envs=self.get_envs())
+
+    def execute(self, inputs: list, application_name: str, timeout: int = 10) -> str:
+        return docker.run("carbynestack/cs-jar", ["ephemeral", "execute", "--timeout", str(timeout)] + map_inputs(inputs) + [application_name], envs=self.get_envs())
+
+def map_tags(tags: dict) -> list:
+    tag_arguments = []
+    for tag_key in tags:
+        tag_arguments.append("--tag")
+        tag_arguments.append("{0}={1}".format(tag_key, tags[tag_key]))
+    return tag_arguments
+
+def map_inputs(inputs: list) -> list:
+    input_arguments = []
+    for input_value in inputs:
+        input_arguments.append("--input")
+        input_arguments.append(input_value)
+    return input_arguments
 
 class Provider:
     def __init__(self, base_url):
