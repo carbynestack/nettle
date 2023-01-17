@@ -11,8 +11,7 @@ from generated import model_training_pb2_grpc
 
 class Orchestrator(model_training_pb2_grpc.ModelTrainingServicer):
     def TrainModel(self, request, context):
-        strategy: CsStrategy = CsStrategy()
-        strategy.amphora_model_id = str(uuid.uuid4())
+        strategy: CsStrategy = CsStrategy(str(uuid.uuid4()))
 
         fl.server.start_server(config=fl.server.ServerConfig(num_rounds=1), strategy=strategy)
 
