@@ -1,12 +1,15 @@
-from typing import Dict, Final
+from typing import Dict, Final, List
 from flwr.server.strategy import FedAvg
+from flwr.common import Parameters, NDArray, NDArrays
+from numpy import ndarray
 
 MODEL_ID_CONFIG_KEY: Final[str] = "model_amphora_secret_id"
 
 class CsStrategy(FedAvg):
-    def __init__(self) -> None:
-        super().__init__(on_fit_config_fn=self._on_fit_config_fn)
-        self._amphoraModelId: str = None
+    def __init__(self, initial_amphora_model_id: str) -> None:
+        empty_parameters: Parameters = Parameters([], "numpy.ndarray")
+        super().__init__(on_fit_config_fn=self._on_fit_config_fn, initial_parameters=empty_parameters)
+        self._amphoraModelId: str = initial_amphora_model_id
 
     @property
     def amphora_model_id(self) -> str:
