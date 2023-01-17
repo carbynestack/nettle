@@ -1,3 +1,6 @@
-python-on-whales
 grpcio
 grpcio-tools
+flwr
+torch
+torchvision
+docker
