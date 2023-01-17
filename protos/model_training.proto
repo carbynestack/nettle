@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package generated;
+
 message TrainModelParameters {
    string initialModelSecretId = 1;
 }

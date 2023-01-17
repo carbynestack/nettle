@@ -6,8 +6,8 @@ from torch.distributions import transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
-from generated.model_training_pb2 import TrainModelParameters
-from generated.model_training_pb2_grpc import ModelTrainingStub
+from generated import model_training_pb2
+from generated import model_training_pb2_grpc
 from model.net import Net
 from utils.cli import CLI, Provider
 from utils.spdz_pytorch_conversion import float32_tensor_to_sfloat_array, sfloat_array_to_float32_tensor
@@ -38,8 +38,6 @@ class ModelOwner:
                 Provider(base_url="http://apollo.bocse.carbynestack.io/"),
                 Provider(base_url="http://starbuck.bocse.carbynestack.io/")
             ])
-        with grpc.insecure_channel('localhost:50051') as channel:
-            self.stub = ModelTrainingStub(channel)
 
     def upload_model(self):
         """Serializes the model into a MP-SPDZ sfloat array and uploads that to Amphora."""
@@ -75,8 +73,10 @@ class ModelOwner:
 
     def train(self):
         initialModelId = self.upload_model()
-        params = TrainModelParameters(initialModelId)
-        final_model_id = self.stub.TrainModel(params)
+        params = model_training_pb2.TrainModelParameters(initialModelSecretId=initialModelId)
+        with grpc.insecure_channel('localhost:50051') as channel:
+            stub = model_training_pb2_grpc.ModelTrainingStub(channel)
+            final_model_id = stub.TrainModel(params)
         model_params = self.download_model(final_model_id)
         self.update_model(model_params)
 
@@ -92,7 +92,7 @@ def load_test_data():
     return test_loader, num_examples
 
 
-def test(model, test_loader):
+def validate_model(model, test_loader):
     """Validate the network on the test set."""
     criterion = torch.nn.CrossEntropyLoss()
     correct, total, loss = 0, 0, 0.0
@@ -112,7 +112,7 @@ def run():
     mo = ModelOwner()
     mo.train()
     loader, num_examples = load_test_data()
-    loss, accuracy = test(mo.model, loader)
+    loss, accuracy = validate_model(mo.model, loader)
     logging.info('Accuracy: %d, Loss: %d', accuracy, loss)
 
 
