@@ -9,76 +9,28 @@ from torchvision.datasets import CIFAR10
 from generated import model_training_pb2
 from generated import model_training_pb2_grpc
 from model.net import Net
-from utils.cli import CLI, Provider
-from utils.spdz_pytorch_conversion import float32_tensor_to_sfloat_array, sfloat_array_to_float32_tensor
-
-
-def flatten(l):
-    return [item for sublist in l for item in sublist]
-
-
-def length(tensor):
-    l = 1
-    for dim in tensor.shape:
-        l *= dim
-    return l
-
 
 DEVICE = torch.device("cpu")
 
 
 class ModelOwner:
-    def __init__(self) -> None:
-        self.model = Net().to(DEVICE)
-        self.cli = CLI(
-            prime="198766463529478683931867765928436695041",
-            r="141515903391459779531506841503331516415",
-            r_inv="133854242216446749056083838363708373830",
-            providers=[
-                Provider(base_url="http://apollo.bocse.carbynestack.io/"),
-                Provider(base_url="http://starbuck.bocse.carbynestack.io/")
-            ])
-
-    def upload_model(self):
-        """Serializes the model into a MP-SPDZ sfloat array and uploads that to Amphora."""
-        data = []
-        items = self.model.state_dict().items()
-        for layer, params in items:
-            logging.info("Collecting %d parameters for layer '%s'", length(params), layer)
-            data += flatten(float32_tensor_to_sfloat_array(params, shift=True))
-        secret_id = self.cli.create_secret(values=data)
-        logging.info('Uploaded %d-element model to Amphora with ID: %s', len(data), secret_id)
-        return secret_id
-
-    def update_model(self, data):
-        """Updates the model from the provided data which is expected to be a 1d array of MP-SPDZ sfloat parameters."""
-
-        # "Reshape" to get an array of 4-element arrays (one for each MP-SPDZ sfloat).
-        remaining = []
-        for i in range(len(data) // 4):
-            remaining.append(data[i * 4:(i + 1) * 4])
-
-        # Traverse layers one by one updating the parameters
-        for layer, params in self.model.state_dict().items():
-            logging.info("Processing layer %s of shape %s", layer, params.shape)
-            d = remaining[:length(params)]
-            remaining = remaining[length(params):]
-            t = sfloat_array_to_float32_tensor(d, params.shape, shift=True)
-            params.copy_(t)
-            logging.info("Copied %d parameters to layer %s", len(t), layer)
-
-    def download_model(self, secret_id):
-        values, _ = self.cli.get_secret(secret_id)
-        return values
+    """The Model Owner own a NN model in a FL process."""
+    def __init__(self, model) -> None:
+        self.model = model.to(DEVICE)
 
     def train(self):
-        initialModelId = self.upload_model()
+        # Store the model in Amphora
+        initialModelId = self.model.store()
+
+        # Trigger the FL process by sending the identifier of the initial model to the orchestrator for latter use by
+        # the clients.
         params = model_training_pb2.TrainModelParameters(initialModelSecretId=initialModelId)
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = model_training_pb2_grpc.ModelTrainingStub(channel)
             final_model_id = stub.TrainModel(params)
-        model_params = self.download_model(final_model_id)
-        self.update_model(model_params)
+
+        # Load the final model parameters from Amphora
+        self.model.load(final_model_id)
 
 
 def load_test_data():
@@ -109,8 +61,16 @@ def validate_model(model, test_loader):
 
 
 def run():
-    mo = ModelOwner()
+    # Instantiate our model
+    model = Net()
+
+    # Create the model owner that is in control of the model
+    mo = ModelOwner(model)
+
+    # Perform the distributed FL training process
     mo.train()
+
+    # Load test data and  check the accuracy of the trained model
     loader, num_examples = load_test_data()
     loss, accuracy = validate_model(mo.model, loader)
     logging.info('Accuracy: %d, Loss: %d', accuracy, loss)
