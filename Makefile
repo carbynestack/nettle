@@ -2,7 +2,7 @@
 all: cli
 
 .PHONY: build
-build:
+build: cli
 	pip install -r requirements.txt
 
 .PHONY: cli
