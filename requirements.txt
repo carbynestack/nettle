@@ -1,1 +1,3 @@
 python-on-whales
+grpcio
+grpcio-tools
