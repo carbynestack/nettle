@@ -8,6 +8,7 @@ from generated.model_training_pb2_grpc import ModelTrainingStub
 def train_model(stub):
     params = TrainModelParameters()
     final_model_id = stub.TrainModel(params)
+    print('Received model ID {}'.format(final_model_id))
 
 
 def run():
