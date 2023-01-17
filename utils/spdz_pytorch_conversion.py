@@ -1,4 +1,7 @@
 import math
+import sys
+
+import numpy as np
 import torch
 
 # Single precision parameters for sfloat
@@ -35,12 +38,16 @@ def float_to_sfloat(v):
 
 
 # Converts a torch.float32 tensor into an array of MP-SPDZ sfloats.
-def float32_tensor_to_sfloat_array(tensor):
+def float32_tensor_to_sfloat_array(tensor, shift=False):
     assert tensor.dtype == torch.float32
     f = torch.flatten(tensor)
     sfloats = []
     for _, f in enumerate(f):
-        sfloats.append(float_to_sfloat(f.item()))
+        sfloat = float_to_sfloat(f.item())
+        if shift:
+            sfloat[0] += 2 ** vlen
+            sfloat[1] += 2 ** plen
+        sfloats.append(sfloat)
     return sfloats
 
 
@@ -50,8 +57,11 @@ def sfloat_to_float(v, p, z, s):
 
 
 # Converts an array of MP-SPDZ sfloats into a float32 tensor of the given shape.
-def sfloat_array_to_float32_tensor(values, shape):
+def sfloat_array_to_float32_tensor(values, shape, shift=False):
     tv = []
     for v in values:
+        if shift:
+            v[0] -= 2 ** vlen
+            v[1] -= 2 ** plen
         tv.append(sfloat_to_float(*v))
     return torch.reshape(torch.tensor(tv), shape)

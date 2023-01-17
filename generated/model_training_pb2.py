@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x14model_training.proto\"\x16\n\x14TrainModelParameters\".\n\x10TrainModelResult\x12\x1a\n\x12\x66inalModelSecretId\x18\x01 \x01(\t2I\n\rModelTraining\x12\x38\n\nTrainModel\x12\x15.TrainModelParameters\x1a\x11.TrainModelResult\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x14model_training.proto\"4\n\x14TrainModelParameters\x12\x1c\n\x14initialModelSecretId\x18\x01 \x01(\t\".\n\x10TrainModelResult\x12\x1a\n\x12\x66inalModelSecretId\x18\x01 \x01(\t2I\n\rModelTraining\x12\x38\n\nTrainModel\x12\x15.TrainModelParameters\x1a\x11.TrainModelResult\"\x00\x62\x06proto3'
 )
 
 
@@ -33,6 +33,13 @@ _TRAINMODELPARAMETERS = _descriptor.Descriptor(
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
+    _descriptor.FieldDescriptor(
+      name='initialModelSecretId', full_name='TrainModelParameters.initialModelSecretId', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -46,7 +53,7 @@ _TRAINMODELPARAMETERS = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=24,
-  serialized_end=46,
+  serialized_end=76,
 )
 
 
@@ -77,8 +84,8 @@ _TRAINMODELRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=48,
-  serialized_end=94,
+  serialized_start=78,
+  serialized_end=124,
 )
 
 DESCRIPTOR.message_types_by_name['TrainModelParameters'] = _TRAINMODELPARAMETERS
@@ -108,8 +115,8 @@ _MODELTRAINING = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=96,
-  serialized_end=169,
+  serialized_start=126,
+  serialized_end=199,
   methods=[
   _descriptor.MethodDescriptor(
     name='TrainModel',
