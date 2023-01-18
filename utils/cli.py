@@ -70,11 +70,11 @@ class CLI:
             You haven't built the docker image via `make build` or the CLI raised an exception
         """
         (status_code, stdout, stderr) = self.__run_container(
-            entrypoint=["java", "-jar", "cs.jar", "amphora", "create-secret"] + self.__map_tags(tags),
+            entrypoint=["java", "-jar", "cs.jar", "amphora", "create-secret"] + self.__map_tags(tags=tags),
             stdin_open=True,
             stdin_value='\n'.join(map(str, values)))
 
-        if status_code == 1:
+        if status_code != 0:
             raise CLIException(message=stderr)
         else:
             return str(stdout).splitlines()[1]
@@ -102,7 +102,7 @@ class CLI:
         (status_code, stdout, stderr) = self.__run_container(
             entrypoint=["java", "-jar", "cs.jar", "amphora", "get-secret", identifier])
 
-        if status_code == 1:
+        if status_code != 0:
             raise CLIException(message=stderr)
         else:
             result_lines = stdout.splitlines()
@@ -144,7 +144,7 @@ class CLI:
         (status_code, stdout, stderr) = self.__run_container(
             entrypoint=["ephemeral", "execute", "--timeout", str(timeout)] + self.__map_inputs(inputs) + [application_name])
 
-        if status_code == 1:
+        if status_code != 0:
             raise CLIException(message=stderr)
         else:
             return stdout
@@ -182,16 +182,15 @@ class CLI:
             entrypoint=entrypoint,
         )
 
+        self.docker_client.start(container)
+
         if stdin_open:
             sock = self.docker_client.attach_socket(
                 container,
                 params={"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1})
-            self.docker_client.start(container)
             sock._sock.send(str.encode(stdin_value))
             sock._sock.close()
             sock.close()
-
-        self.docker_client.start(container)
 
         status = self.docker_client.wait(container)
         status_code = status["StatusCode"]
