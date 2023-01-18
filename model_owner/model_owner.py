@@ -86,7 +86,7 @@ def run(param_id: uuid.UUID = None):
               required=False,
               help='Identifier of the Amphora secret containing the model parameters.')
 def model_owner(reuse_params):
-    param_id = reuse_params is None if None else uuid.UUID(reuse_params)
+    param_id = None if reuse_params is None else uuid.UUID(reuse_params)
     run(param_id)
 
 
