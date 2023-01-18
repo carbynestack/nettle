@@ -2,8 +2,10 @@ from collections import OrderedDict
 
 import flwr as fl
 import torch
+from tqdm import tqdm
 
 from orchestrator.cs_strategy import MODEL_ID_CONFIG_KEY
+
 
 class NettleClient(fl.client.NumPyClient):
     def __init__(self, device, cs_net, trainloader, testloader):
@@ -12,20 +14,20 @@ class NettleClient(fl.client.NumPyClient):
         self.trainloader = trainloader
         self.testloader = testloader
 
-    def train(epochs):
+    def train(self, epochs):
         criterion = torch.nn.CrossEntropyLoss()
-        optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+        optimizer = torch.optim.SGD(self.net.parameters(), lr=0.001, momentum=0.9)
         for _ in range(epochs):
             for images, labels in tqdm(self.trainloader):
                 optimizer.zero_grad()
-                criterion(self.net(images.to(device)), labels.to(device)).backward()
+                criterion(self.net(images.to(self.device)), labels.to(self.device)).backward()
                 optimizer.step()
 
-    def test():
+    def test(self):
         criterion = torch.nn.CrossEntropyLoss()
         correct, total, loss = 0, 0, 0.0
         with torch.no_grad():
-            for images, labels in tqdm(testloader):
+            for images, labels in tqdm(self.testloader):
                 outputs = self.net(images.to(self.device))
                 labels = labels.to(self.device)
                 loss += criterion(outputs, labels).item()
@@ -46,9 +48,9 @@ class NettleClient(fl.client.NumPyClient):
         self.net.load(secret_id)
         self.train(epochs=1)
         secret_id = self.net.store()
-        return self.get_parameters(config={}), len(trainloader.dataset), {MODEL_ID_CONFIG_KEY: secret_id}
+        return self.get_parameters(config={}), len(self.trainloader.dataset), {MODEL_ID_CONFIG_KEY: secret_id}
 
     def evaluate(self, parameters, config):
         self.set_parameters(parameters)
-        loss, accuracy = self.test(self.net, testloader)
-        return loss, len(testloader.dataset), {"accuracy": accuracy}
+        loss, accuracy = self.test()
+        return loss, len(self.testloader.dataset), {"accuracy": accuracy}
