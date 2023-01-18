@@ -116,12 +116,10 @@ class CLI:
         """
         container = self.docker_client.create_container(
             'carbynestack/cs-jar',
-            stdin_open=True,
             environment=self.get_envs(),
             entrypoint=["java", "-jar", "cs.jar", "amphora", "get-secret", identifier],
         )
 
-        sock = self.docker_client.attach_socket(container, params={"stdin": 0, "stdout": 1, "stderr": 1, "stream": 1})
         self.docker_client.start(container)
 
         status = self.docker_client.wait(container)
@@ -143,7 +141,43 @@ class CLI:
         return ast.literal_eval(result_lines[0]), tags
 
     def execute(self, inputs: list, application_name: str, timeout: int = 10) -> str:
-         docker.run("carbynestack/cs-jar", ["ephemeral", "execute", "--timeout", str(timeout)] + map_inputs(inputs) + [application_name], envs=self.get_envs(), remove=True), None
+        """
+        Invokes an Ephemeral function with the given inputs secrets.
+
+        Parameters
+        ----------
+        inputs : list, required
+            A list of input ids (UUID)
+
+        Returns
+        -------
+        str
+            The secret ID in UUID format
+
+        Raises
+        ------
+        DockerException
+            If Docker is not running or you haven't built the docker image via `make build`
+        """
+
+        container = self.docker_client.create_container(
+            'carbynestack/cs-jar',
+            environment=self.get_envs(),
+            entrypoint=["ephemeral", "execute", "--timeout", str(timeout)] + map_inputs(inputs) + [application_name],
+        )
+
+        self.docker_client.start(container)
+
+        status = self.docker_client.wait(container)
+        status_code = status["StatusCode"]
+        stdout = self.docker_client.logs(container, stderr=False).decode()
+        stderr = self.docker_client.logs(container, stdout=False).decode()
+
+        # TODO: handle status_code & stderr
+
+        self.docker_client.remove_container(container)
+
+        return str(stdout);
 
 
 def map_tags(tags: dict) -> list:
