@@ -29,7 +29,7 @@ class ModelOwner:
 
         # Trigger the FL process by sending the identifier of the initial model to the orchestrator for latter use by
         # the clients.
-        params = model_training_pb2.TrainModelParameters(initialModelSecretId=self.params_id)
+        params = model_training_pb2.TrainModelParameters(initialModelSecretId=str(self.params_id))
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = model_training_pb2_grpc.ModelTrainingStub(channel)
             final_model_id = stub.TrainModel(params)
@@ -82,9 +82,11 @@ def run(param_id: uuid.UUID = None):
 
 
 @click.command()
-@click.option('--reuse-params', required=False, help='Identifier of the Amphora secret containing the model parameters.')
+@click.option('--reuse-params',
+              required=False,
+              help='Identifier of the Amphora secret containing the model parameters.')
 def model_owner(reuse_params):
-    param_id = reuse_params is None if None else uuid.UUID(reuse_params)
+    param_id = None if reuse_params is None else uuid.UUID(reuse_params)
     run(param_id)
 
 
