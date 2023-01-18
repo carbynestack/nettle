@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from generated import model_training_pb2 as model__training__pb2
+import generated.model_training_pb2 as model__training__pb2
 
 
 class ModelTrainingStub(object):
@@ -15,7 +15,7 @@ class ModelTrainingStub(object):
             channel: A grpc.Channel.
         """
         self.TrainModel = channel.unary_unary(
-                '/ModelTraining/TrainModel',
+                '/generated.ModelTraining/TrainModel',
                 request_serializer=model__training__pb2.TrainModelParameters.SerializeToString,
                 response_deserializer=model__training__pb2.TrainModelResult.FromString,
                 )
@@ -40,7 +40,7 @@ def add_ModelTrainingServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'ModelTraining', rpc_method_handlers)
+            'generated.ModelTraining', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
@@ -59,7 +59,7 @@ class ModelTraining(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/ModelTraining/TrainModel',
+        return grpc.experimental.unary_unary(request, target, '/generated.ModelTraining/TrainModel',
             model__training__pb2.TrainModelParameters.SerializeToString,
             model__training__pb2.TrainModelResult.FromString,
             options, channel_credentials,
