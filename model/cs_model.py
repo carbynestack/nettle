@@ -42,7 +42,7 @@ class CsModule(nn.Module):
         logging.info('Uploaded %d-element model to Amphora with ID: %s', len(data), secret_id)
         return secret_id
 
-    def update_model(self, data):
+    def __update_model(self, data):
         """Updates the model from the provided data which is expected to be a 1d array of MP-SPDZ sfloat parameters."""
 
         # "Reshape" to get an array of 4-element arrays (one for each MP-SPDZ sfloat).
@@ -62,4 +62,4 @@ class CsModule(nn.Module):
     def load(self, secret_id):
         """Loads the serialized model parameters from Amphora and updates the model accordingly."""
         values, _ = self.cli.get_secret(secret_id)
-        self.update_model(values)
+        self.__update_model(values)
