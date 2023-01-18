@@ -45,7 +45,7 @@ class NettleClient(fl.client.NumPyClient):
         secret_id = config[MODEL_ID_CONFIG_KEY]
         self.net.load(secret_id)
         self.train(epochs=1)
-        secret_id = self.store()
+        secret_id = self.net.store()
         return self.get_parameters(config={}), len(trainloader.dataset), {MODEL_ID_CONFIG_KEY: secret_id}
 
     def evaluate(self, parameters, config):
