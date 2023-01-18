@@ -1,3 +1,4 @@
+import collections
 import logging
 
 from torch import nn
@@ -32,7 +33,7 @@ class CsModule(nn.Module):
         return l
 
     def store(self):
-        """Serializes the model into a MP-SPDZ sfloat array and stores it in Amphora."""
+        """Serializes the model into an MP-SPDZ sfloat array and stores it in Amphora."""
         data = []
         items = self.state_dict().items()
         for layer, params in items:
