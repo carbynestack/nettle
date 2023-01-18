@@ -1,4 +1,6 @@
+import click
 import logging
+import uuid
 
 import grpc
 import torch
@@ -15,16 +17,19 @@ DEVICE = torch.device("cpu")
 
 class ModelOwner:
     """The Model Owner own a NN model in a FL process."""
-    def __init__(self, model) -> None:
+
+    def __init__(self, model, params_id: uuid.UUID = None) -> None:
         self.model = model.to(DEVICE)
+        self.params_id = params_id
 
     def train(self):
-        # Store the model in Amphora
-        initialModelId = self.model.store()
+        if self.params_id is None:
+            # Store the model in Amphora
+            self.params_id = self.model.store()
 
         # Trigger the FL process by sending the identifier of the initial model to the orchestrator for latter use by
         # the clients.
-        params = model_training_pb2.TrainModelParameters(initialModelSecretId=initialModelId)
+        params = model_training_pb2.TrainModelParameters(initialModelSecretId=self.params_id)
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = model_training_pb2_grpc.ModelTrainingStub(channel)
             final_model_id = stub.TrainModel(params)
@@ -60,12 +65,12 @@ def validate_model(model, test_loader):
     return loss, accuracy
 
 
-def run():
+def run(param_id: uuid.UUID = None):
     # Instantiate our model
     model = Net()
 
     # Create the model owner that is in control of the model
-    mo = ModelOwner(model)
+    mo = ModelOwner(model, params_id=param_id)
 
     # Perform the distributed FL training process
     mo.train()
@@ -76,6 +81,13 @@ def run():
     logging.info('Accuracy: %d, Loss: %d', accuracy, loss)
 
 
+@click.command()
+@click.option('--reuse-params', required=False, help='Identifier of the Amphora secret containing the model parameters.')
+def model_owner(reuse_params):
+    param_id = reuse_params is None if None else uuid.UUID(reuse_params)
+    run(param_id)
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    run()
+    model_owner()
