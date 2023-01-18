@@ -3,6 +3,8 @@ import ast
 
 from typing import Dict, List, Tuple
 
+from docker.errors import DockerException
+
 
 class CLI:
     """
@@ -28,6 +30,10 @@ class CLI:
     gamma(n=1.0)
         Change the photo's gamma exposure.
 
+    Raises
+    ------
+    CLIException
+        If Docker is not running or there was an issue connecting to it
     """
 
     def __init__(self, prime: int, r: int, r_inv: int, providers: List["Provider"]):
@@ -35,7 +41,10 @@ class CLI:
         self.r = r
         self.r_inv = r_inv
         self.providers = providers
-        self.docker_client = docker.APIClient()
+        try:
+            self.docker_client = docker.APIClient()
+        except DockerException as docker_exception:
+            raise CLIException(message=str(docker_exception))
 
     def create_secret(self, values: List[int], tags: Dict[str, str] = None) -> str:
         """
@@ -57,17 +66,18 @@ class CLI:
 
         Raises
         ------
-        DockerException
-            If Docker is not running or you haven't built the docker image via `make build`
+        CLIException
+            You haven't built the docker image via `make build` or the CLI raised an exception
         """
         (status_code, stdout, stderr) = self.__run_container(
             entrypoint=["java", "-jar", "cs.jar", "amphora", "create-secret"] + self.__map_tags(tags),
             stdin_open=True,
             stdin_value='\n'.join(map(str, values)))
 
-        # TODO: handle errors
-
-        return str(stdout).splitlines()[1]
+        if status_code == 1:
+            raise CLIException(message=stderr)
+        else:
+            return str(stdout).splitlines()[1]
 
     def get_secret(self, identifier: str) -> Tuple[List[int], Dict[str, str]]:
         """
@@ -86,22 +96,23 @@ class CLI:
 
         Raises
         ------
-        DockerException
-            If Docker is not running or you haven't built the docker image via `make build`
+        CLIException
+            You haven't built the docker image via `make build` or the CLI raised an exception
         """
         (status_code, stdout, stderr) = self.__run_container(
             entrypoint=["java", "-jar", "cs.jar", "amphora", "get-secret", identifier])
 
-        # TODO: handle errors
+        if status_code == 1:
+            raise CLIException(message=stderr)
+        else:
+            result_lines = stdout.splitlines()
+            tags = {}
+            if len(result_lines) > 1:
+                for line_number in range(1, len(result_lines)):
+                    split_line = result_lines[line_number].split("->")
+                    tags[split_line[0].strip()] = split_line[1].strip()
 
-        result_lines = stdout.splitlines()
-        tags = {}
-        if len(result_lines) > 1:
-            for line_number in range(1, len(result_lines)):
-                split_line = result_lines[line_number].split("->")
-                tags[split_line[0].strip()] = split_line[1].strip()
-
-        return ast.literal_eval(result_lines[0]), tags
+            return ast.literal_eval(result_lines[0]), tags
 
     def execute(self, inputs: List[str], application_name: str, timeout: int = 10) -> str:
         """
@@ -126,19 +137,19 @@ class CLI:
 
         Raises
         ------
-        DockerException
-            If Docker is not running or you haven't built the docker image via `make build`
+        CLIException
+            You haven't built the docker image via `make build` or the CLI raised an exception
         """
 
         (status_code, stdout, stderr) = self.__run_container(
-            entrypoint=["ephemeral", "execute", "--timeout", str(timeout)] + self.__map_inputs(inputs) + [
-                application_name])
+            entrypoint=["ephemeral", "execute", "--timeout", str(timeout)] + self.__map_inputs(inputs) + [application_name])
 
-        # TODO: handle errors
+        if status_code == 1:
+            raise CLIException(message=stderr)
+        else:
+            return stdout
 
-        return stdout
-
-    def __run_container(self, entrypoint: List[str], stdin_open=False, stdin_value="") -> Tuple[str, str, str]:
+    def __run_container(self, entrypoint: List[str], stdin_open=False, stdin_value="") -> Tuple[int, str, str]:
         """
         Runs the CarbyneStack CLI docker image
 
@@ -172,8 +183,9 @@ class CLI:
         )
 
         if stdin_open:
-            sock = self.docker_client.attach_socket(container,
-                                                    params={"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1})
+            sock = self.docker_client.attach_socket(
+                container,
+                params={"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1})
             self.docker_client.start(container)
             sock._sock.send(str.encode(stdin_value))
             sock._sock.close()
@@ -282,3 +294,16 @@ class Provider:
 
     def __init__(self, base_url: str):
         self.base_url = base_url
+
+class CLIException(Exception):
+    """Exception raised while communicating with the CarbyneStack CLI.
+
+    Attributes
+    ----------
+    message : str, required
+        explanation of the error
+    """
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(self.message)
