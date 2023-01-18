@@ -1,6 +1,9 @@
 import docker
 import ast
 
+from typing import Dict, List, Tuple
+
+
 class CLI:
     """
     A CLI proxy that invokes the CarbyneStack CLI (https://github.com/carbynestack/cli) running via a docker container.
@@ -27,14 +30,14 @@ class CLI:
 
     """
 
-    def __init__(self, prime: int, r: int, r_inv: int, providers: list):
+    def __init__(self, prime: int, r: int, r_inv: int, providers: List["Provider"]):
         self.prime = prime
         self.r = r
         self.r_inv = r_inv
         self.providers = providers
         self.docker_client = docker.APIClient()
 
-    def create_secret(self, values: list, tags: dict = None) -> str:
+    def create_secret(self, values: List[int], tags: Dict[str, str] = None) -> str:
         """
         Secret-shares the passed in values and uploads them to all CarbyneStack Providers.
 
@@ -66,7 +69,7 @@ class CLI:
 
         return str(stdout).splitlines()[1]
 
-    def get_secret(self, identifier: str) -> tuple:
+    def get_secret(self, identifier: str) -> Tuple[List[int], Dict[str, str]]:
         """
         Retrieves the secret from the CarbyneStack providers and recombines the shares into the original value
 
@@ -86,7 +89,8 @@ class CLI:
         DockerException
             If Docker is not running or you haven't built the docker image via `make build`
         """
-        (status_code, stdout, stderr) = self.__run_container(entrypoint=["java", "-jar", "cs.jar", "amphora", "get-secret", identifier])
+        (status_code, stdout, stderr) = self.__run_container(
+            entrypoint=["java", "-jar", "cs.jar", "amphora", "get-secret", identifier])
 
         # TODO: handle errors
 
@@ -99,7 +103,7 @@ class CLI:
 
         return ast.literal_eval(result_lines[0]), tags
 
-    def execute(self, inputs: list, application_name: str, timeout: int = 10) -> str:
+    def execute(self, inputs: List[str], application_name: str, timeout: int = 10) -> str:
         """
         Invokes an Ephemeral function with the given inputs secrets.
 
@@ -126,13 +130,15 @@ class CLI:
             If Docker is not running or you haven't built the docker image via `make build`
         """
 
-        (status_code, stdout, stderr) = self.__run_container(entrypoint=["ephemeral", "execute", "--timeout", str(timeout)] + self.__map_inputs(inputs) + [application_name])
+        (status_code, stdout, stderr) = self.__run_container(
+            entrypoint=["ephemeral", "execute", "--timeout", str(timeout)] + self.__map_inputs(inputs) + [
+                application_name])
 
         # TODO: handle errors
 
         return stdout
 
-    def __run_container(self, entrypoint: list, stdin_open = False, stdin_value = "") -> tuple:
+    def __run_container(self, entrypoint: List[str], stdin_open=False, stdin_value="") -> Tuple[str, str, str]:
         """
         Runs the CarbyneStack CLI docker image
 
@@ -166,7 +172,8 @@ class CLI:
         )
 
         if stdin_open:
-            sock = self.docker_client.attach_socket(container, params={"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1})
+            sock = self.docker_client.attach_socket(container,
+                                                    params={"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1})
             self.docker_client.start(container)
             sock._sock.send(str.encode(stdin_value))
             sock._sock.close()
@@ -183,7 +190,7 @@ class CLI:
 
         return status_code, str(stdout), str(stderr)
 
-    def __get_envs(self) -> dict:
+    def __get_envs(self) -> Dict[str, str]:
         """
         build the dict of CarbyneStack CLI configuration environment variables
 
@@ -258,15 +265,14 @@ class CLI:
         return input_arguments
 
 
-
-
 class Provider:
     """
     CarbyneStack Provider
+
     Attributes
     ----------
     base_url : str
-       The base URL of the CarbyneStack provider that all other connection params derive from
+       The base URL of a CarbyneStack provider that all other connection params derive from
        Example: "https://apollo.bocse.carbynestack.io/"
     """
 
