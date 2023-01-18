@@ -217,7 +217,7 @@ class CLI:
         return envs
 
     @staticmethod
-    def __map_tags(tags: dict) -> list:
+    def __map_tags(tags: Dict[str,str] = None) -> List[str]:
         """
         Maps the passed in dict of tags to a list of arguments used in docker run
 
@@ -234,6 +234,10 @@ class CLI:
             A list of tag arguments for docker run
             Example: ["--tag", "message=howdy", "--tag", "type=magic"]
         """
+
+        if tags is None:
+            return []
+
         tag_arguments = []
         for tag_key in tags:
             tag_arguments.append("--tag")
@@ -241,7 +245,7 @@ class CLI:
         return tag_arguments
 
     @staticmethod
-    def __map_inputs(inputs: list) -> list:
+    def __map_inputs(inputs: List[str]) -> List[str]:
         """
         Maps the passed in list of input ids to a list of arguments used in docker run
 
@@ -276,5 +280,5 @@ class Provider:
        Example: "https://apollo.bocse.carbynestack.io/"
     """
 
-    def __init__(self, base_url):
+    def __init__(self, base_url: str):
         self.base_url = base_url
