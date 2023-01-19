@@ -1,8 +1,10 @@
+from logging import DEBUG
+
 import docker
 import ast
 
 from typing import Dict, List, Tuple
-
+from flwr.common.logger import log
 from docker.errors import DockerException
 
 
@@ -140,7 +142,6 @@ class CLI:
         CLIException
             You haven't built the docker image via `make build` or the CLI raised an exception
         """
-
         (status_code, stdout, stderr) = self.__run_container(
             entrypoint=["ephemeral", "execute", "--timeout", str(timeout)] + self.__map_inputs(inputs) + [application_name])
 
@@ -174,6 +175,7 @@ class CLI:
                 2. the STDOUT of the container
                 3. the STDERR of the container
         """
+        log(DEBUG, str("Executing CLI command" + " with STDIN: %s" if stdin_open else ": %s"), ' '.join(list(map(str, entrypoint))))
 
         container = self.docker_client.create_container(
             'carbynestack/cs-jar',
@@ -198,6 +200,8 @@ class CLI:
         stderr = self.docker_client.logs(container, stdout=False).decode()
 
         self.docker_client.remove_container(container)
+
+        log(DEBUG, str("Execution completed with status code: %s", str(status_code)))
 
         return status_code, str(stdout), str(stderr)
 
@@ -234,7 +238,6 @@ class CLI:
 
         Parameters
         ----------
-
         tags: dict, required
             A list of secret IDs (UUID) that will be used in the mpc program.
             Example: {"message":"howdy", "type":"magic"}
@@ -262,7 +265,6 @@ class CLI:
 
         Parameters
         ----------
-
         inputs: list, required
             A list of secret IDs (UUID) that will be used in the mpc program.
             Example: ["91163E6B-AD8E-42EE-8374-5C471B5D97B5", "D97ACC22-1D5A-442C-8A52-0D26EDC55C11"]
@@ -273,6 +275,7 @@ class CLI:
             A list of tag arguments for docker run
             Example: ["--input", "91163E6B-AD8E-42EE-8374-5C471B5D97B5", "--input", "D97ACC22-1D5A-442C-8A52-0D26EDC55C11"]
         """
+
         input_arguments = []
         for input_value in inputs:
             input_arguments.append("--input")
@@ -295,7 +298,8 @@ class Provider:
         self.base_url = base_url
 
 class CLIException(Exception):
-    """Exception raised while communicating with the CarbyneStack CLI.
+    """
+    Exception raised while communicating with the CarbyneStack CLI.
 
     Attributes
     ----------
