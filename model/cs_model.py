@@ -48,8 +48,8 @@ class CsModule(nn.Module):
 
         # "Reshape" to get an array of 4-element arrays (one for each MP-SPDZ sfloat).
         remaining = []
-        for i in range(len(data) // 4):
-            remaining.append(data[i * 4:(i + 1) * 4])
+        for i in range(len(data) // 3):
+            remaining.append(data[i * 3:(i + 1) * 3])
 
         # Traverse layers one by one updating the parameters
         for layer, params in super().state_dict().items():

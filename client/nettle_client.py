@@ -53,10 +53,14 @@ class NettleClient(fl.client.NumPyClient):
         self.train(epochs=1)
         log(DEBUG, "Storing...")
         secret_id = self.net.store()
-        log(DEBUG, "New model amphora sid $s", secret_id)
+        log(DEBUG, "New model amphora sid %s", secret_id)
         return self.get_parameters(config={}), len(self.trainloader.dataset), {MODEL_ID_CONFIG_KEY: secret_id}
 
     def evaluate(self, parameters, config):
-        self.set_parameters(parameters)
+        secret_id = config[MODEL_ID_CONFIG_KEY]
+        log(DEBUG, "Loading model %s for evaluation", secret_id)
+        self.net.load(secret_id)
+        log(DEBUG, "Test model %s", secret_id)
         loss, accuracy = self.test()
+        log(DEBUG, "Achieved Loss: %s - Accuracy: %s", loss, accuracy)
         return loss, len(self.testloader.dataset), {"accuracy": accuracy}

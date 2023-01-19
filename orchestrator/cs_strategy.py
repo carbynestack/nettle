@@ -3,6 +3,8 @@ from typing import Dict, Final, List, Optional, Tuple, Union
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy import FedAvg
 from flwr.common import FitRes, Parameters, Scalar
+from logging import DEBUG
+from flwr.common.logger import log
 
 MODEL_ID_CONFIG_KEY: Final[str] = "model_amphora_secret_id"
 
@@ -13,8 +15,8 @@ def retrieve_model_amphora_id_from_metrics(result: Tuple[ClientProxy, FitRes]) -
 
 class CsStrategy(FedAvg):
     def __init__(self, initial_amphora_model_id: str, number_of_clients: int) -> None:
-        print("Initialized CsStrategy with model id {} and {} client(s)"
-              .format(initial_amphora_model_id, number_of_clients))
+        log(DEBUG, "Initialized CsStrategy with model id %s and %d client(s)",
+            initial_amphora_model_id, number_of_clients)
         empty_parameters: Parameters = Parameters([], "numpy.ndarray")
         super().__init__(
             min_available_clients=number_of_clients,
@@ -39,7 +41,7 @@ class CsStrategy(FedAvg):
             return None, {}
 
         amphora_model_ids = list(map(retrieve_model_amphora_id_from_metrics, results))
-        print("retrieved amphora model secret ids after round {}: {}".format(server_round, amphora_model_ids))
+        log(DEBUG, "retrieved amphora model secret ids after round %d: %s", server_round, amphora_model_ids)
         if len(amphora_model_ids) <= 0:
             raise Exception('No model secret share id received.')
 
@@ -76,5 +78,5 @@ class CsStrategy(FedAvg):
 
     def _on_any_config_fn(self, round: int) -> Dict[str, str]:
         config = {MODEL_ID_CONFIG_KEY: self._amphoraModelId}
-        print("applying config {} for round {}".format(config, round))
+        log(DEBUG, "applying config %s for round %d", config, round)
         return config

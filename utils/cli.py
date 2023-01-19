@@ -201,7 +201,7 @@ class CLI:
 
         self.docker_client.remove_container(container)
 
-        log(DEBUG, str("Execution completed with status code: %s", str(status_code)))
+        log(DEBUG, "Execution completed with status code: %s", str(status_code))
 
         return status_code, str(stdout), str(stderr)
 

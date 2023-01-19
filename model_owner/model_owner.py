@@ -4,7 +4,7 @@ import uuid
 
 import grpc
 import torch
-from torch.distributions import transforms
+import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
@@ -12,6 +12,7 @@ from flwr.common.logger import log
 from generated import model_training_pb2
 from generated import model_training_pb2_grpc
 from model.net import Net
+from tqdm import tqdm
 
 DEVICE = torch.device("cpu")
 
@@ -35,8 +36,9 @@ class ModelOwner:
         log(INFO, "Triggering orchestrator with parameters %s", params)
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = model_training_pb2_grpc.ModelTrainingStub(channel)
-            final_model_id = stub.TrainModel(params)
+            train_model_result = stub.TrainModel(params)
 
+        final_model_id = train_model_result.finalModelSecretId
         # Load the final model parameters from Amphora
         log(INFO, "Loading parameters of trained model from Amphora secret %s", final_model_id)
         self.model.load(final_model_id)
@@ -58,15 +60,13 @@ def validate_model(model, test_loader):
     criterion = torch.nn.CrossEntropyLoss()
     correct, total, loss = 0, 0, 0.0
     with torch.no_grad():
-        for data in test_loader:
-            images, labels = data[0].to(DEVICE), data[1].to(DEVICE)
-            outputs = model(images)
+        for images, labels in tqdm(test_loader):
+            outputs = model(images.to(DEVICE))
+            labels = labels.to(DEVICE)
             loss += criterion(outputs, labels).item()
-            _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    accuracy = correct / total
-    return loss, accuracy
+            correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
+    return loss / len(test_loader.dataset), correct / total
 
 
 def run(param_id: uuid.UUID = None):
@@ -83,7 +83,7 @@ def run(param_id: uuid.UUID = None):
     loader, num_examples = load_test_data()
     loss, accuracy = validate_model(mo.model, loader)
 
-    log(INFO, 'Accuracy: %d, Loss: %d', accuracy, loss)
+    log(INFO, 'Accuracy: %s, Loss: %s', accuracy, loss)
 
 
 @click.command()
