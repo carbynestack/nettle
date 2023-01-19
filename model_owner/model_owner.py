@@ -1,5 +1,5 @@
 import click
-import logging
+from logging import INFO
 import uuid
 
 import grpc
@@ -8,6 +8,7 @@ from torch.distributions import transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
+from flwr.common.logger import log
 from generated import model_training_pb2
 from generated import model_training_pb2_grpc
 from model.net import Net
@@ -26,15 +27,18 @@ class ModelOwner:
         if self.params_id is None:
             # Store the model in Amphora
             self.params_id = self.model.store()
+        log(INFO, "Using model parameters stored in Amphora secret %s", self.params_id)
 
         # Trigger the FL process by sending the identifier of the initial model to the orchestrator for latter use by
         # the clients.
         params = model_training_pb2.TrainModelParameters(initialModelSecretId=str(self.params_id))
+        log(INFO, "Triggering orchestrator with parameters %s", params)
         with grpc.insecure_channel('localhost:50051') as channel:
             stub = model_training_pb2_grpc.ModelTrainingStub(channel)
             final_model_id = stub.TrainModel(params)
 
         # Load the final model parameters from Amphora
+        log(INFO, "Loading parameters of trained model from Amphora secret %s", final_model_id)
         self.model.load(final_model_id)
 
 
@@ -78,7 +82,8 @@ def run(param_id: uuid.UUID = None):
     # Load test data and  check the accuracy of the trained model
     loader, num_examples = load_test_data()
     loss, accuracy = validate_model(mo.model, loader)
-    logging.info('Accuracy: %d, Loss: %d', accuracy, loss)
+
+    log(INFO, 'Accuracy: %d, Loss: %d', accuracy, loss)
 
 
 @click.command()
@@ -91,5 +96,4 @@ def model_owner(reuse_params):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
     model_owner()
