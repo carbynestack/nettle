@@ -1,6 +1,8 @@
 from collections import OrderedDict
+from logging import DEBUG
 
 import flwr as fl
+from flwr.common.logger import log
 import torch
 from tqdm import tqdm
 
@@ -45,9 +47,13 @@ class NettleClient(fl.client.NumPyClient):
 
     def fit(self, parameters, config):
         secret_id = config[MODEL_ID_CONFIG_KEY]
+        log(DEBUG, "Loading model %s", secret_id)
         self.net.load(secret_id)
+        log(DEBUG, "Train %s", secret_id)
         self.train(epochs=1)
+        log(DEBUG, "Storing...")
         secret_id = self.net.store()
+        log(DEBUG, "New model amphora sid $s", secret_Id)
         return self.get_parameters(config={}), len(self.trainloader.dataset), {MODEL_ID_CONFIG_KEY: secret_id}
 
     def evaluate(self, parameters, config):
