@@ -8,7 +8,7 @@ from torchvision.datasets import CIFAR10
 from torchvision.transforms import Compose, Normalize, ToTensor
 
 from client.nettle_client import NettleClient
-from model.cs_model import CsModule
+from model.net import Net
 
 warnings.filterwarnings("ignore", category=UserWarning)
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -20,7 +20,7 @@ def load_data():
     testset = CIFAR10("./data", train=False, download=True, transform=trf)
     return DataLoader(trainset, batch_size=32, shuffle=True), DataLoader(testset)
 
-cs_net = CsModule().to(DEVICE)
+cs_net = Net().to(DEVICE)
 trainloader, testloader = load_data()
 
 nettleClient = NettleClient(DEVICE, cs_net, trainloader, testloader)
