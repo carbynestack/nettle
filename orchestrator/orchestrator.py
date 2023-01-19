@@ -3,15 +3,14 @@ from concurrent import futures
 
 import flwr as fl
 import grpc
-import uuid
 import logging
 from generated import model_training_pb2
 from generated import model_training_pb2_grpc
 
 
 class Orchestrator(model_training_pb2_grpc.ModelTrainingServicer):
-    def TrainModel(self, request, context):
-        strategy: CsStrategy = CsStrategy(str(uuid.uuid4()))
+    def TrainModel(self, request: model_training_pb2.TrainModelParameters, context):
+        strategy: CsStrategy = CsStrategy(request.initialModelSecretId)
 
         fl.server.start_server(config=fl.server.ServerConfig(num_rounds=1), strategy=strategy)
 

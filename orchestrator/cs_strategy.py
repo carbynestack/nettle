@@ -30,6 +30,7 @@ class CsStrategy(FedAvg):
             return None, {}
 
         amphora_model_ids = list(map(retrieve_model_amphora_id_from_metrics, results))
+        print("retrieved amphora model secret ids after round {}: {}".format(server_round, amphora_model_ids))
         if len(amphora_model_ids) <= 0:
             raise Exception('No model secret share id received.')
 
@@ -65,4 +66,6 @@ class CsStrategy(FedAvg):
         self._amphoraModelId = value
 
     def _on_any_config_fn(self, round: int) -> Dict[str, str]:
-        return {MODEL_ID_CONFIG_KEY: self._amphoraModelId}
+        config = {MODEL_ID_CONFIG_KEY: self._amphoraModelId}
+        print("applying config {} for round {}".format(config, round))
+        return config
