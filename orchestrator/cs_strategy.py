@@ -10,10 +10,19 @@ MODEL_ID_CONFIG_KEY: Final[str] = "model_amphora_secret_id"
 def retrieve_model_amphora_id_from_metrics(result: Tuple[ClientProxy, FitRes]) -> str:
     return result[1].metrics.get(MODEL_ID_CONFIG_KEY)
 
+
 class CsStrategy(FedAvg):
-    def __init__(self, initial_amphora_model_id: str) -> None:
+    def __init__(self, initial_amphora_model_id: str, number_of_clients: int) -> None:
+        print("Initialized CsStrategy with model id {} and {} client(s)"
+              .format(initial_amphora_model_id, number_of_clients))
         empty_parameters: Parameters = Parameters([], "numpy.ndarray")
-        super().__init__(on_fit_config_fn=self._on_any_config_fn, on_evaluate_config_fn=self._on_any_config_fn, initial_parameters=empty_parameters)
+        super().__init__(
+            min_available_clients=number_of_clients,
+            min_fit_clients=number_of_clients,
+            min_evaluate_clients=number_of_clients,
+            on_fit_config_fn=self._on_any_config_fn,
+            on_evaluate_config_fn=self._on_any_config_fn,
+            initial_parameters=empty_parameters)
         self._amphoraModelId: str = initial_amphora_model_id
 
     def aggregate_fit(
