@@ -9,9 +9,10 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
 from flwr.common.logger import log
+
+from examples.cifar_10.cifar_net import Net
 from generated import model_training_pb2
 from generated import model_training_pb2_grpc
-from model.net import Net
 from tqdm import tqdm
 
 DEVICE = torch.device("cpu")

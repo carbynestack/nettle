@@ -8,7 +8,7 @@ from model.cs_model import CsModule
 
 
 class Net(CsModule):
-    """Model (simple CNN adapted from 'PyTorch: A 60 Minute Blitz')"""
+    """Model (simple CNN adapted from 'PyTorch: A 60-Minute Blitz')"""
 
     def __init__(self, request_delay: Optional[int] = None) -> None:
         super().__init__(0 if request_delay is None else request_delay)

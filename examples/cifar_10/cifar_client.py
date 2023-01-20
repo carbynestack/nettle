@@ -1,5 +1,4 @@
 import warnings
-from collections import OrderedDict
 
 import click
 import flwr as fl
@@ -9,7 +8,7 @@ from torchvision.datasets import CIFAR10
 from torchvision.transforms import Compose, Normalize, ToTensor
 
 from client.nettle_client import NettleClient
-from model.net import Net
+from examples.cifar_10.cifar_net import Net
 
 warnings.filterwarnings("ignore", category=UserWarning)
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -31,7 +30,7 @@ def load_data():
     required=False,
     help="Fixed delay (in s) before calling Carbyne Stack CLI methods.",
 )
-def test_client(request_delay: int):
+def cifar_10_client(request_delay: int):
     cs_net = Net(max(0, request_delay)).to(DEVICE)
     trainloader, testloader = load_data()
 
@@ -45,4 +44,4 @@ def test_client(request_delay: int):
 
 
 if __name__ == "__main__":
-    test_client()
+    cifar_10_client()
