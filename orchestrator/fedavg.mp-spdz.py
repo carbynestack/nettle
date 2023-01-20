@@ -33,13 +33,13 @@ client_weights = MultiArray([nr_clients, nr_model_parameters],
 
 
 @for_range_opt([nr_clients, nr_model_parameters])
-def _(c, p):
-    base_idx = c * nr_model_parameters + p
+def _(c, mp):
+    base_idx = c * nr_model_parameters + mp
     v = data[base_idx] - 2 ** vlen
     p = data[base_idx] - 2 ** plen
     z = data[base_idx] % 2
     s = data[base_idx] >> 1
-    client_weights[c][p] = sfloat(v, p, z, s)
+    client_weights[c][mp] = sfloat(v, p, z, s)
 
 
 # Averaging weights
