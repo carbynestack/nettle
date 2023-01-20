@@ -5,4 +5,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""Nettle Orchestrator implementation"""
+a = sint.get_input_from(0)
+b = sint.get_input_from(0)
+
+c = a + b
+
+res = c.reveal()
+print_ln('%s', res)

@@ -5,4 +5,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-"""Nettle Orchestrator implementation"""
+FROM ghcr.io/carbynestack/spdz:642d11f_no-offline
+
+ADD run.sh .
+RUN chmod +x run.sh
+VOLUME ["/mp-spdz/Player-Data"]
+VOLUME ["/mp-spdz/Programs/Source"]
+
+CMD ["./run.sh"]

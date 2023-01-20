@@ -1,3 +1,10 @@
+#
+# Copyright (c) 2023 - for information on the respective copyright owner
+# see the NOTICE file and/or the repository https://github.com/carbynestack/nettle.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 import math
 
 import torch
@@ -69,7 +76,10 @@ def float32_tensor_to_sfloat_array(tensor, shift=False):
     :param shift: if True, 'shifts' sfloat significant and exponent values such that the all of them are positive
     :return: the array of 3-element sfloats
     """
-    assert tensor.dtype == torch.float32
+    if tensor.dtype is not torch.float32:
+        raise ValueError(
+            f"tensor type is not supported {tensor.dtype}; must be {torch.float32}"
+        )
     f = torch.flatten(tensor)
     sfloats = []
     for _, f in enumerate(f):
@@ -96,7 +106,8 @@ def sfloat_array_to_float32_tensor(values, shape, shift=False):
 
     :param values: the array of 3-element sfloats to be converted
     :param shape: the shape of returned tensor
-    :param shift: if True, 'shifts' sfloat significant and exponent values back (see float32_tensor_to_sfloat_array)
+    :param shift: if True, 'shifts' sfloat significant and exponent values back
+                  (see :func:`float32_tensor_to_sfloat_array`)
     :return: the resulting tensor
     """
     tv = []

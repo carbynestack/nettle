@@ -1,15 +1,24 @@
+/*
+ * Copyright (c) 2023 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository https://github.com/carbynestack/nettle.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 syntax = "proto3";
 
+// TODO 'Train' should be replaced with something like 'Experiment'
+// (something that refers to the full process of a multi-round FL 'session')
 package generated;
 
 message TrainModelParameters {
-   string initialModelSecretId = 1;
+  string initialModelSecretId = 1;
 }
 
 message TrainModelResult {
-   string finalModelSecretId = 1;
+  string finalModelSecretId = 1;
 }
 
 service ModelTraining {
-   rpc TrainModel(TrainModelParameters) returns (TrainModelResult) {}
+  rpc TrainModel(TrainModelParameters) returns (TrainModelResult) {}
 }

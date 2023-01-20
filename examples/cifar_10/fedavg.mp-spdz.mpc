@@ -1,8 +1,17 @@
+#
+# Copyright (c) 2023 - for information on the respective copyright owner
+# see the NOTICE file and/or the repository https://github.com/carbynestack/nettle.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 """
 Returns the average of `nr_client` model updates.
 
 Expects an array of `nr_client` arrays each containing the `nr_parameters` updated parameters (each represented as 3
 sint values) from the clients.
+
+This implementation can be used with the Nettles MP-SPDZ MPC backend.
 
 :returns an array of `nr_parameters` averaged parameters (each represented as 3 sint values)
 """
@@ -21,15 +30,7 @@ vlen = 24
 plen = 8
 
 # Prologue to read in the inputs
-port = regint(10000)
-listen(port)
-socket_id = regint()
-acceptclientconnection(socket_id, port)
-data = Array.create_from(
-    sint.read_from_socket(
-        socket_id, nr_clients * nr_model_parameters * nr_sints_per_sfloat
-    )
-)
+data = Array.create_from(sint.get_input_from(0, size=nr_clients * nr_model_parameters * nr_sints_per_sfloat))
 
 # Splitting up data into individual client updates
 client_weights = MultiArray([nr_clients, nr_model_parameters], sfloat)
@@ -72,4 +73,4 @@ def _(mp):
 
 
 # Epilogue to return the average weights
-sint.write_to_socket(socket_id, encoded_avg_weights)
+encoded_avg_weights.print_reveal_nested()
