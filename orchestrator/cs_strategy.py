@@ -52,7 +52,7 @@ class CsStrategy(FedAvg):
 
         # Invoke ephemeral with the model updates as inputs
         application_name = "ephemeral-generic.default"
-        timeout = 60 * 5
+        timeout = 60 * 50
         log(DEBUG, "Triggering ephemeral secure aggregation (application name: %s, timeout: %d)", application_name,
             timeout)
         aggregated_params_id = self.__cs_cli.execute(amphora_model_ids, application_name, timeout)

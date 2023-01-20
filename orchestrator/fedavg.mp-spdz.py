@@ -34,11 +34,11 @@ client_weights = MultiArray([nr_clients, nr_model_parameters],
 
 @for_range_opt([nr_clients, nr_model_parameters])
 def _(c, mp):
-    base_idx = c * nr_model_parameters + mp
+    base_idx = (c * nr_model_parameters + mp) * nr_sints_per_sfloat
     v = data[base_idx] - 2 ** vlen
-    p = data[base_idx] - 2 ** plen
-    z = data[base_idx] % 2
-    s = data[base_idx] >> 1
+    p = data[base_idx+1] - 2 ** plen
+    z = data[base_idx+2] % 2
+    s = data[base_idx+2] >> 1
     client_weights[c][mp] = sfloat(v, p, z, s)
 
 
@@ -61,11 +61,11 @@ encoded_avg_weights = Array(nr_model_parameters * nr_sints_per_sfloat, sint)
 
 
 @for_range_opt(nr_model_parameters)
-def _(p):
-    base_idx = p * nr_sints_per_sfloat
-    encoded_avg_weights[base_idx] = avg_weights[p].v + 2 ** vlen
-    encoded_avg_weights[base_idx + 1] = avg_weights[p].p + 2 ** plen
-    encoded_avg_weights[base_idx + 2] = avg_weights[p].z + avg_weights[p].s * 2
+def _(mp):
+    base_idx = mp * nr_sints_per_sfloat
+    encoded_avg_weights[base_idx] = avg_weights[mp].v + 2 ** vlen
+    encoded_avg_weights[base_idx + 1] = avg_weights[mp].p + 2 ** plen
+    encoded_avg_weights[base_idx + 2] = avg_weights[mp].z + avg_weights[mp].s * 2
 
 
 # Epilogue to return the average weights
