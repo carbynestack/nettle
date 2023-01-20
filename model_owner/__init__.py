@@ -1,0 +1,1 @@
+"""Nettle Model Owner implementation"""
