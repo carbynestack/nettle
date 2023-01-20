@@ -13,10 +13,6 @@ repos:
     - id: flake8
       args:
         - "--max-line-length=88"
-
-        # these are errors that will be ignored by flake8
-        # check out their meaning here
-        # https://flake8.pycqa.org/en/latest/user/error-codes.html
         - "--ignore=E203,E266,F401,E402,F403,E501,W503"
       exclude: ^generated/|orchestrator/fedavg.mp-spdz.py
 - repo: https://github.com/executablebooks/mdformat
