@@ -1,6 +1,7 @@
 import warnings
 from collections import OrderedDict
 
+import click
 import flwr as fl
 import torch
 from torch.utils.data import DataLoader
@@ -20,13 +21,25 @@ def load_data():
     testset = CIFAR10("./data", train=False, download=True, transform=trf)
     return DataLoader(trainset, batch_size=32, shuffle=True), DataLoader(testset)
 
-cs_net = Net().to(DEVICE)
-trainloader, testloader = load_data()
 
-nettleClient = NettleClient(DEVICE, cs_net, trainloader, testloader)
+@click.command()
+@click.option('--request-delay',
+              type=int,
+              default=0,
+              required=False,
+              help='Fixed delay (in s) before calling Carbyne Stack CLI methods.')
+def test_client(request_delay: int):
+    cs_net = Net(max(0, request_delay)).to(DEVICE)
+    trainloader, testloader = load_data()
 
-# Start Flower client
-fl.client.start_numpy_client(
-    server_address="127.0.0.1:8080",
-    client=nettleClient,
-)
+    nettleClient = NettleClient(DEVICE, cs_net, trainloader, testloader)
+
+    # Start Flower client
+    fl.client.start_numpy_client(
+        server_address="127.0.0.1:8080",
+        client=nettleClient,
+    )
+
+if __name__ == '__main__':
+    test_client()
+
