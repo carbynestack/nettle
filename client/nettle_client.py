@@ -22,7 +22,9 @@ class NettleClient(fl.client.NumPyClient):
         for _ in range(epochs):
             for images, labels in tqdm(self.trainloader):
                 optimizer.zero_grad()
-                criterion(self.net(images.to(self.device)), labels.to(self.device)).backward()
+                criterion(
+                    self.net(images.to(self.device)), labels.to(self.device)
+                ).backward()
                 optimizer.step()
 
     def test(self):
@@ -54,7 +56,11 @@ class NettleClient(fl.client.NumPyClient):
         log(DEBUG, "Storing...")
         secret_id = self.net.store()
         log(DEBUG, "New model amphora sid %s", secret_id)
-        return self.get_parameters(config={}), len(self.trainloader.dataset), {MODEL_ID_CONFIG_KEY: secret_id}
+        return (
+            self.get_parameters(config={}),
+            len(self.trainloader.dataset),
+            {MODEL_ID_CONFIG_KEY: secret_id},
+        )
 
     def evaluate(self, parameters, config):
         secret_id = config[MODEL_ID_CONFIG_KEY]

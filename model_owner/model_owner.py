@@ -32,15 +32,21 @@ class ModelOwner:
 
         # Trigger the FL process by sending the identifier of the initial model to the orchestrator for latter use by
         # the clients.
-        params = model_training_pb2.TrainModelParameters(initialModelSecretId=str(self.params_id))
+        params = model_training_pb2.TrainModelParameters(
+            initialModelSecretId=str(self.params_id)
+        )
         log(INFO, "Triggering orchestrator with parameters %s", params)
-        with grpc.insecure_channel('localhost:50051') as channel:
+        with grpc.insecure_channel("localhost:50051") as channel:
             stub = model_training_pb2_grpc.ModelTrainingStub(channel)
             train_model_result = stub.TrainModel(params)
 
         final_model_id = train_model_result.finalModelSecretId
         # Load the final model parameters from Amphora
-        log(INFO, "Loading parameters of trained model from Amphora secret %s", final_model_id)
+        log(
+            INFO,
+            "Loading parameters of trained model from Amphora secret %s",
+            final_model_id,
+        )
         self.model.load(final_model_id)
 
 
@@ -83,17 +89,19 @@ def run(param_id: uuid.UUID = None):
     loader, num_examples = load_test_data()
     loss, accuracy = validate_model(mo.model, loader)
 
-    log(INFO, 'Accuracy: %s, Loss: %s', accuracy, loss)
+    log(INFO, "Accuracy: %s, Loss: %s", accuracy, loss)
 
 
 @click.command()
-@click.option('--reuse-params',
-              required=False,
-              help='Identifier of the Amphora secret containing the model parameters.')
+@click.option(
+    "--reuse-params",
+    required=False,
+    help="Identifier of the Amphora secret containing the model parameters.",
+)
 def model_owner(reuse_params):
     param_id = None if reuse_params is None else uuid.UUID(reuse_params)
     run(param_id)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     model_owner()

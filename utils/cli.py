@@ -72,9 +72,11 @@ class CLI:
             You haven't built the docker image via `make build` or the CLI raised an exception
         """
         (status_code, stdout, stderr) = self.__run_container(
-            entrypoint=["java", "-jar", "cs.jar", "amphora", "create-secret"] + self.__map_tags(tags=tags),
+            entrypoint=["java", "-jar", "cs.jar", "amphora", "create-secret"]
+            + self.__map_tags(tags=tags),
             stdin_open=True,
-            stdin_value='\n'.join(map(str, values)))
+            stdin_value="\n".join(map(str, values)),
+        )
 
         if status_code != 0:
             raise CLIException(message=stderr)
@@ -102,7 +104,8 @@ class CLI:
             You haven't built the docker image via `make build` or the CLI raised an exception
         """
         (status_code, stdout, stderr) = self.__run_container(
-            entrypoint=["java", "-jar", "cs.jar", "amphora", "get-secret", identifier])
+            entrypoint=["java", "-jar", "cs.jar", "amphora", "get-secret", identifier]
+        )
 
         if status_code != 0:
             raise CLIException(message=stderr)
@@ -116,7 +119,9 @@ class CLI:
 
             return ast.literal_eval(result_lines[0]), tags
 
-    def execute(self, inputs: List[str], application_name: str, timeout: int = 10) -> str:
+    def execute(
+        self, inputs: List[str], application_name: str, timeout: int = 10
+    ) -> str:
         """
         Invokes an Ephemeral function with the given inputs secrets.
 
@@ -143,14 +148,19 @@ class CLI:
             You haven't built the docker image via `make build` or the CLI raised an exception
         """
         (status_code, stdout, stderr) = self.__run_container(
-            entrypoint=["ephemeral", "execute", "--timeout", str(timeout)] + self.__map_inputs(inputs) + [application_name])
+            entrypoint=["ephemeral", "execute", "--timeout", str(timeout)]
+            + self.__map_inputs(inputs)
+            + [application_name]
+        )
 
         if status_code != 0:
             raise CLIException(message=stderr)
         else:
             return stdout
 
-    def __run_container(self, entrypoint: List[str], stdin_open=False, stdin_value="") -> Tuple[int, str, str]:
+    def __run_container(
+        self, entrypoint: List[str], stdin_open=False, stdin_value=""
+    ) -> Tuple[int, str, str]:
         """
         Runs the CarbyneStack CLI docker image
 
@@ -175,10 +185,14 @@ class CLI:
                 2. the STDOUT of the container
                 3. the STDERR of the container
         """
-        log(DEBUG, str("Executing CLI command" + " with STDIN: %s" if stdin_open else ": %s"), ' '.join(list(map(str, entrypoint))))
+        log(
+            DEBUG,
+            str("Executing CLI command" + " with STDIN: %s" if stdin_open else ": %s"),
+            " ".join(list(map(str, entrypoint))),
+        )
 
         container = self.docker_client.create_container(
-            'carbynestack/cs-jar',
+            "carbynestack/cs-jar",
             stdin_open=stdin_open,
             environment=self.__get_envs(),
             entrypoint=entrypoint,
@@ -188,8 +202,8 @@ class CLI:
 
         if stdin_open:
             sock = self.docker_client.attach_socket(
-                container,
-                params={"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1})
+                container, params={"stdin": 1, "stdout": 1, "stderr": 1, "stream": 1}
+            )
             sock._sock.send(str.encode(stdin_value))
             sock._sock.close()
             sock.close()
@@ -220,7 +234,7 @@ class CLI:
             "CS_PRIME": str(self.prime),
             "CS_R": str(self.r),
             "CS_R_INV": str(self.r_inv),
-            'CS_NO_SSL_VALIDATION': 'true'
+            "CS_NO_SSL_VALIDATION": "true",
         }
 
         for i, provider in enumerate(self.providers):
@@ -232,7 +246,7 @@ class CLI:
         return envs
 
     @staticmethod
-    def __map_tags(tags: Dict[str,str] = None) -> List[str]:
+    def __map_tags(tags: Dict[str, str] = None) -> List[str]:
         """
         Maps the passed in dict of tags to a list of arguments used in docker run
 
@@ -296,6 +310,7 @@ class Provider:
 
     def __init__(self, base_url: str):
         self.base_url = base_url
+
 
 class CLIException(Exception):
     """

@@ -14,6 +14,7 @@ from model.net import Net
 warnings.filterwarnings("ignore", category=UserWarning)
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
 def load_data():
     """Load CIFAR-10 (training and test set)."""
     trf = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -23,11 +24,13 @@ def load_data():
 
 
 @click.command()
-@click.option('--request-delay',
-              type=int,
-              default=0,
-              required=False,
-              help='Fixed delay (in s) before calling Carbyne Stack CLI methods.')
+@click.option(
+    "--request-delay",
+    type=int,
+    default=0,
+    required=False,
+    help="Fixed delay (in s) before calling Carbyne Stack CLI methods.",
+)
 def test_client(request_delay: int):
     cs_net = Net(max(0, request_delay)).to(DEVICE)
     trainloader, testloader = load_data()
@@ -40,6 +43,6 @@ def test_client(request_delay: int):
         client=nettleClient,
     )
 
-if __name__ == '__main__':
-    test_client()
 
+if __name__ == "__main__":
+    test_client()

@@ -25,20 +25,23 @@ port = regint(10000)
 listen(port)
 socket_id = regint()
 acceptclientconnection(socket_id, port)
-data = Array.create_from(sint.read_from_socket(socket_id, nr_clients * nr_model_parameters * nr_sints_per_sfloat))
+data = Array.create_from(
+    sint.read_from_socket(
+        socket_id, nr_clients * nr_model_parameters * nr_sints_per_sfloat
+    )
+)
 
 # Splitting up data into individual client updates
-client_weights = MultiArray([nr_clients, nr_model_parameters],
-                            sfloat)
+client_weights = MultiArray([nr_clients, nr_model_parameters], sfloat)
 
 
 @for_range_opt([nr_clients, nr_model_parameters])
 def _(c, mp):
     base_idx = (c * nr_model_parameters + mp) * nr_sints_per_sfloat
-    v = data[base_idx] - 2 ** vlen
-    p = data[base_idx+1] - 2 ** plen
-    z = data[base_idx+2] % 2
-    s = data[base_idx+2] >> 1
+    v = data[base_idx] - 2**vlen
+    p = data[base_idx + 1] - 2**plen
+    z = data[base_idx + 2] % 2
+    s = data[base_idx + 2] >> 1
     client_weights[c][mp] = sfloat(v, p, z, s)
 
 
@@ -63,8 +66,8 @@ encoded_avg_weights = Array(nr_model_parameters * nr_sints_per_sfloat, sint)
 @for_range_opt(nr_model_parameters)
 def _(mp):
     base_idx = mp * nr_sints_per_sfloat
-    encoded_avg_weights[base_idx] = avg_weights[mp].v + 2 ** vlen
-    encoded_avg_weights[base_idx + 1] = avg_weights[mp].p + 2 ** plen
+    encoded_avg_weights[base_idx] = avg_weights[mp].v + 2**vlen
+    encoded_avg_weights[base_idx + 1] = avg_weights[mp].p + 2**plen
     encoded_avg_weights[base_idx + 2] = avg_weights[mp].z + avg_weights[mp].s * 2
 
 

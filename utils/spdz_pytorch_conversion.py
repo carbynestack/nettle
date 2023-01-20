@@ -29,15 +29,18 @@ def float_to_sfloat(v):
         p = int(math.floor(math.log(abs(v), 2))) - sfloat_significant_bit_length + 1
         vv = v
         v = int(round(abs(v) * 2 ** (-p)))
-        if v == 2 ** sfloat_significant_bit_length:
+        if v == 2**sfloat_significant_bit_length:
             p += 1
             v //= 2
         z = 0
-        if p < -2 ** (sfloat_exponent_bit_length - 1):
-            print('Warning: %e truncated to zero' % vv)
+        if p < -(2 ** (sfloat_exponent_bit_length - 1)):
+            print("Warning: %e truncated to zero" % vv)
             v, p, z = 0, 0, 1
         if p >= 2 ** (sfloat_exponent_bit_length - 1):
-            raise Exception('Cannot convert %s to float with %d exponent bits' % (vv, sfloat_exponent_bit_length))
+            raise Exception(
+                "Cannot convert %s to float with %d exponent bits"
+                % (vv, sfloat_exponent_bit_length)
+            )
     return [v, p, z, s]
 
 
@@ -72,8 +75,8 @@ def float32_tensor_to_sfloat_array(tensor, shift=False):
     for _, f in enumerate(f):
         sfloat = float_to_sfloat(f.item())
         if shift:
-            sfloat[0] += 2 ** sfloat_significant_bit_length
-            sfloat[1] += 2 ** sfloat_exponent_bit_length
+            sfloat[0] += 2**sfloat_significant_bit_length
+            sfloat[1] += 2**sfloat_exponent_bit_length
         sfloats.append(encode_sfloat(sfloat))
     return sfloats
 
@@ -84,7 +87,7 @@ def sfloat_to_float(v):
     :param v: the 4-element sfloat to convert
     :return: the float32 equivalent
     """
-    return (1-2*v[3])*(1-v[2])*v[0]*math.pow(2, v[1])
+    return (1 - 2 * v[3]) * (1 - v[2]) * v[0] * math.pow(2, v[1])
 
 
 # Converts an array of MP-SPDZ sfloats into a float32 tensor of the given shape.
@@ -99,7 +102,7 @@ def sfloat_array_to_float32_tensor(values, shape, shift=False):
     tv = []
     for v in values:
         if shift:
-            v[0] -= 2 ** sfloat_significant_bit_length
-            v[1] -= 2 ** sfloat_exponent_bit_length
+            v[0] -= 2**sfloat_significant_bit_length
+            v[1] -= 2**sfloat_exponent_bit_length
         tv.append(sfloat_to_float(decode_sfloat(v)))
     return torch.reshape(torch.tensor(tv), shape)

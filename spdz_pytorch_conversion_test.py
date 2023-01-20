@@ -27,9 +27,11 @@ class TestRoundtripConversion(unittest.TestCase):
         for v in sfloatArr:
             for i in v:
                 self.assertTrue(np.sign(i) != -1)
-        result = conv.sfloat_array_to_float32_tensor(sfloatArr, tensor.shape, shift=True)
+        result = conv.sfloat_array_to_float32_tensor(
+            sfloatArr, tensor.shape, shift=True
+        )
         self.assertTrue(torch.equal(tensor, result), tensor)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

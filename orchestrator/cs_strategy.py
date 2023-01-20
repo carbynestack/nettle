@@ -16,9 +16,15 @@ def retrieve_model_amphora_id_from_metrics(result: Tuple[ClientProxy, FitRes]) -
 
 
 class CsStrategy(FedAvg):
-    def __init__(self, cli: CLI, initial_amphora_model_id: str, number_of_clients: int) -> None:
-        log(DEBUG, "Initialized Carbyne Stack strategy with model id %s and %d client(s)",
-            initial_amphora_model_id, number_of_clients)
+    def __init__(
+        self, cli: CLI, initial_amphora_model_id: str, number_of_clients: int
+    ) -> None:
+        log(
+            DEBUG,
+            "Initialized Carbyne Stack strategy with model id %s and %d client(s)",
+            initial_amphora_model_id,
+            number_of_clients,
+        )
         empty_parameters: Parameters = Parameters([], "numpy.ndarray")
         super().__init__(
             min_available_clients=number_of_clients,
@@ -26,15 +32,16 @@ class CsStrategy(FedAvg):
             min_evaluate_clients=number_of_clients,
             on_fit_config_fn=self._on_any_config_fn,
             on_evaluate_config_fn=self._on_any_config_fn,
-            initial_parameters=empty_parameters)
+            initial_parameters=empty_parameters,
+        )
         self.__cs_cli = cli
         self.__amphora_model_id: str = initial_amphora_model_id
 
     def aggregate_fit(
-            self,
-            server_round: int,
-            results: List[Tuple[ClientProxy, FitRes]],
-            failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+        self,
+        server_round: int,
+        results: List[Tuple[ClientProxy, FitRes]],
+        failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
     ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
         """Aggregate fit results using weighted average."""
         if not results:
@@ -45,18 +52,36 @@ class CsStrategy(FedAvg):
 
         # Retrieve the Amphora secret IDs for the client model updates from results
         amphora_model_ids = list(map(retrieve_model_amphora_id_from_metrics, results))
-        log(DEBUG, "Retrieved %d Amphora model secret IDs after round %d: %s", len(amphora_model_ids), server_round,
-            amphora_model_ids)
+        log(
+            DEBUG,
+            "Retrieved %d Amphora model secret IDs after round %d: %s",
+            len(amphora_model_ids),
+            server_round,
+            amphora_model_ids,
+        )
         if len(amphora_model_ids) == 0:
-            raise Exception('No model secret IDs received.')
+            raise Exception("No model secret IDs received.")
 
         # Invoke ephemeral with the model updates as inputs
         application_name = "ephemeral-generic.default"
         timeout = 60 * 50
-        log(DEBUG, "Triggering ephemeral secure aggregation (application name: %s, timeout: %d)", application_name,
-            timeout)
-        aggregated_params_id = self.__cs_cli.execute(amphora_model_ids, application_name, timeout)
-        log(DEBUG, "Secure aggregation created new model secret with ID: %s", aggregated_params_id)
+        log(
+            DEBUG,
+            (
+                "Triggering ephemeral secure aggregation (application name: %s,"
+                " timeout: %d)"
+            ),
+            application_name,
+            timeout,
+        )
+        aggregated_params_id = self.__cs_cli.execute(
+            amphora_model_ids, application_name, timeout
+        )
+        log(
+            DEBUG,
+            "Secure aggregation created new model secret with ID: %s",
+            aggregated_params_id,
+        )
 
         self.__amphora_model_id = aggregated_params_id
         return Parameters([], "numpy.ndarray"), {}
