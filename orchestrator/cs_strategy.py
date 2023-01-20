@@ -6,6 +6,8 @@ from flwr.common import FitRes, Parameters, Scalar
 from logging import DEBUG
 from flwr.common.logger import log
 
+from utils.cli import CLI
+
 MODEL_ID_CONFIG_KEY: Final[str] = "model_amphora_secret_id"
 
 
@@ -14,8 +16,8 @@ def retrieve_model_amphora_id_from_metrics(result: Tuple[ClientProxy, FitRes]) -
 
 
 class CsStrategy(FedAvg):
-    def __init__(self, initial_amphora_model_id: str, number_of_clients: int) -> None:
-        log(DEBUG, "Initialized CsStrategy with model id %s and %d client(s)",
+    def __init__(self, cli: CLI, initial_amphora_model_id: str, number_of_clients: int) -> None:
+        log(DEBUG, "Initialized Carbyne Stack strategy with model id %s and %d client(s)",
             initial_amphora_model_id, number_of_clients)
         empty_parameters: Parameters = Parameters([], "numpy.ndarray")
         super().__init__(
@@ -25,7 +27,8 @@ class CsStrategy(FedAvg):
             on_fit_config_fn=self._on_any_config_fn,
             on_evaluate_config_fn=self._on_any_config_fn,
             initial_parameters=empty_parameters)
-        self._amphoraModelId: str = initial_amphora_model_id
+        self.__cs_cli = cli
+        self.__amphora_model_id: str = initial_amphora_model_id
 
     def aggregate_fit(
             self,
@@ -40,43 +43,33 @@ class CsStrategy(FedAvg):
         if not self.accept_failures and failures:
             return None, {}
 
+        # Retrieve the Amphora secret IDs for the client model updates from results
         amphora_model_ids = list(map(retrieve_model_amphora_id_from_metrics, results))
-        log(DEBUG, "retrieved amphora model secret ids after round %d: %s", server_round, amphora_model_ids)
-        if len(amphora_model_ids) <= 0:
-            raise Exception('No model secret share id received.')
+        log(DEBUG, "Retrieved %d Amphora model secret IDs after round %d: %s", len(amphora_model_ids), server_round,
+            amphora_model_ids)
+        if len(amphora_model_ids) == 0:
+            raise Exception('No model secret IDs received.')
 
-        #
-        # Following to be moved to ephemeral:
-        #
-        # # Convert results
-        # weights_results = [
-        #     (parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
-        #     for _, fit_res in results
-        # ]
-        # parameters_aggregated = ndarrays_to_parameters(aggregate(weights_results))
+        # Invoke ephemeral with the model updates as inputs
+        application_name = "ephemeral-generic.default"
+        timeout = 60 * 5
+        log(DEBUG, "Triggering ephemeral secure aggregation (application name: %s, timeout: %d)", application_name,
+            timeout)
+        aggregated_params_id = self.__cs_cli.execute(amphora_model_ids, application_name, timeout)
+        log(DEBUG, "Secure aggregation created new model secret with ID: %s", aggregated_params_id)
 
-        # Aggregate custom metrics if aggregation fn was provided
-        # metrics_aggregated = {}
-        # if self.fit_metrics_aggregation_fn:
-        #     fit_metrics = [(res.num_examples, res.metrics) for _, res in results]
-        #     metrics_aggregated = self.fit_metrics_aggregation_fn(fit_metrics)
-        # elif server_round == 1:  # Only log this warning once
-        #     log(WARNING, "No fit_metrics_aggregation_fn provided")
-        #
-        # return parameters_aggregated, metrics_aggregated
-
-        self._amphoraModelId = amphora_model_ids[0]
+        self.__amphora_model_id = aggregated_params_id
         return Parameters([], "numpy.ndarray"), {}
 
     @property
     def amphora_model_id(self) -> str:
-        return self._amphoraModelId
+        return self.__amphora_model_id
 
     @amphora_model_id.setter
     def amphora_model_id(self, value: str):
-        self._amphoraModelId = value
+        self.__amphora_model_id = value
 
     def _on_any_config_fn(self, round: int) -> Dict[str, str]:
-        config = {MODEL_ID_CONFIG_KEY: self._amphoraModelId}
-        log(DEBUG, "applying config %s for round %d", config, round)
+        config = {MODEL_ID_CONFIG_KEY: self.__amphora_model_id}
+        log(DEBUG, "Applying config %s for round %d", config, round)
         return config
