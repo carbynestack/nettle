@@ -31,7 +31,7 @@ client_weights = MultiArray([nr_clients, nr_model_parameters],
 
 
 @for_range_opt([nr_clients, nr_model_parameters])
-def f(i, j):
+def _(i, j):
     base_idx = i * nr_clients + j
     v = data[base_idx] - 2 ** vlen
     p = data[base_idx] - 2 ** plen
@@ -45,7 +45,7 @@ avg_weights = Array(nr_model_parameters, sfloat)
 
 
 @for_range_opt([nr_clients, nr_model_parameters])
-def f(i, j):
+def _(i, j):
     avg_weights[j] += client_weights[i][j]
 
 
