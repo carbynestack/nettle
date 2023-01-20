@@ -14,7 +14,6 @@ from generated import model_training_pb2_grpc
 from model.net import Net
 from tqdm import tqdm
 
-DEFAULT_REUSE_PARAMETERS: bool = False
 DEVICE = torch.device("cpu")
 
 
@@ -90,7 +89,6 @@ def run(param_id: uuid.UUID = None):
 @click.command()
 @click.option('--reuse-params',
               required=False,
-              default=DEFAULT_REUSE_PARAMETERS,
               help='Identifier of the Amphora secret containing the model parameters.')
 def model_owner(reuse_params):
     param_id = None if reuse_params is None else uuid.UUID(reuse_params)
