@@ -1,7 +1,6 @@
-import collections
-import logging
 from time import sleep
 
+from logging import DEBUG
 from flwr.common.logger import log
 from torch import nn
 
@@ -22,8 +21,8 @@ class CsModule(nn.Module):
                 Provider(base_url="http://apollo.bocse.carbynestack.io/"),
                 Provider(base_url="http://starbuck.bocse.carbynestack.io/")
             ])
-        self._request_delay = request_delay
-        log(logging.DEBUG, "Initialized CsModule with a request delay of %d seconds", self._request_delay)
+        self.__request_delay = request_delay
+        log(DEBUG, "Initialized Carbyne Stack module with a request delay of %d seconds", self.__request_delay)
 
     @staticmethod
     def __flatten(l):
@@ -41,11 +40,11 @@ class CsModule(nn.Module):
         data = []
         items = self.state_dict().items()
         for layer, params in items:
-            logging.info("Collecting %d parameters for layer '%s'", self.__length(params), layer)
+            log(DEBUG, "Collecting %d parameters for layer '%s'", self.__length(params), layer)
             data += self.__flatten(float32_tensor_to_sfloat_array(params, shift=True))
-        sleep(self._request_delay)
+        sleep(self.__request_delay)
         secret_id = self.cli.create_secret(values=data)
-        logging.info('Uploaded %d-element model to Amphora with ID: %s', len(data), secret_id)
+        log(DEBUG, 'Uploaded %d-element model to Amphora with ID: %s', len(data), secret_id)
         return secret_id
 
     def __update_model(self, data):
@@ -58,15 +57,17 @@ class CsModule(nn.Module):
 
         # Traverse layers one by one updating the parameters
         for layer, params in super().state_dict().items():
-            logging.info("Processing layer %s of shape %s", layer, params.shape)
+            log(DEBUG, "Processing layer %s of shape %s", layer, params.shape)
             d = remaining[:self.__length(params)]
             remaining = remaining[self.__length(params):]
             t = sfloat_array_to_float32_tensor(d, params.shape, shift=True)
             params.copy_(t)
-            logging.info("Copied %d parameters to layer %s", len(t), layer)
+            log(DEBUG, "Copied %d parameters to layer %s", len(t), layer)
 
     def load(self, secret_id):
         """Loads the serialized model parameters from Amphora and updates the model accordingly."""
-        sleep(self._request_delay)
+        log(DEBUG, "Sleeping for %d seconds", self.__request_delay)
+        sleep(self.__request_delay)
         values, _ = self.cli.get_secret(secret_id)
+        log(DEBUG, "Retrieved %d-element Amphora secret with ID %s", len(values), secret_id)
         self.__update_model(values)
