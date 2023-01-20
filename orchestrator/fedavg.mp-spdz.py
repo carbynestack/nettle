@@ -11,6 +11,8 @@ sint values) from the clients.
 # Nettles deployment.
 nr_clients = 2
 nr_model_parameters = 62006
+
+# We used the sfloat encoding that packs the sign and zero bits into a single sint
 nr_sints_per_sfloat = 3
 
 # Single precision parameters for sfloat. This is used to shift values back from the Amphora representation. Must the
@@ -31,13 +33,13 @@ client_weights = MultiArray([nr_clients, nr_model_parameters],
 
 
 @for_range_opt([nr_clients, nr_model_parameters])
-def _(i, j):
-    base_idx = i * nr_clients + j
+def _(c, p):
+    base_idx = c * nr_model_parameters + p
     v = data[base_idx] - 2 ** vlen
     p = data[base_idx] - 2 ** plen
     z = data[base_idx] % 2
     s = data[base_idx] >> 1
-    client_weights[i][j] = sfloat(v, p, z, s)
+    client_weights[c][p] = sfloat(v, p, z, s)
 
 
 # Averaging weights
@@ -45,13 +47,13 @@ avg_weights = Array(nr_model_parameters, sfloat)
 
 
 @for_range_opt([nr_clients, nr_model_parameters])
-def _(i, j):
-    avg_weights[j] += client_weights[i][j]
+def _(c, p):
+    avg_weights[p] += client_weights[c][p]
 
 
 @for_range_opt(nr_model_parameters)
-def _(i):
-    avg_weights[i] /= nr_clients
+def _(p):
+    avg_weights[p] /= nr_clients
 
 
 # Encode the average weights
@@ -59,11 +61,11 @@ encoded_avg_weights = Array(nr_model_parameters * nr_sints_per_sfloat, sint)
 
 
 @for_range_opt(nr_model_parameters)
-def _(i):
-    base_idx = i * nr_sints_per_sfloat
-    encoded_avg_weights[base_idx] = avg_weights[i].v + 2 ** vlen
-    encoded_avg_weights[base_idx + 1] = avg_weights[i].p + 2 ** plen
-    encoded_avg_weights[base_idx + 2] = avg_weights[i].z + avg_weights[i].s * 2
+def _(p):
+    base_idx = p * nr_sints_per_sfloat
+    encoded_avg_weights[base_idx] = avg_weights[p].v + 2 ** vlen
+    encoded_avg_weights[base_idx + 1] = avg_weights[p].p + 2 ** plen
+    encoded_avg_weights[base_idx + 2] = avg_weights[p].z + avg_weights[p].s * 2
 
 
 # Epilogue to return the average weights
