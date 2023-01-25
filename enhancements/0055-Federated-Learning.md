@@ -40,8 +40,9 @@
 
 Nettle is an integration layer between the [Flower] federated learning framework
 and Carbyne Stack. Nettle allows for large-scale privacy-preserving federated
-learning with MPC-based secure aggregation and protects against inference
-attacks.
+learning with MPC-based secure aggregation to protect against inference attacks.
+In addition, Nettle uses confidential computing techniques to protect the model
+on the clients.
 
 ### Namesake
 
@@ -51,16 +52,18 @@ attacks.
 
 ## Motivation
 
-Federated Learning is taking up momentum in many use case areas. In addition, FL
-lends itself very well to adding privacy via MPC as the required operations for
-secure aggregation and model updates are comparatively lightweight. FL is also a
-major technique used in the [CRYPTECS] PfP that adopted Carbyne Stack for
-executing MPC workloads.
+Federated Learning is taking up momentum in many domains. In addition, FL lends
+itself very well to adding privacy via MPC as the required operations for secure
+aggregation and model updates are comparatively lightweight. FL is also a major
+technique used in the [CRYPTECS] PfP that adopted Carbyne Stack for executing
+MPC workloads.
 
 ### Goals
 
 - Provide a service that supports privacy-preserving FL by offloading model
   aggregation and update to a Carbyne Stack Virtual Cloud
+- Integrate with a major federated learning framework to minimize implementation
+  effort and maximize applicability
 
 ### Non-Goals
 
@@ -70,13 +73,13 @@ executing MPC workloads.
 ## Proposal
 
 This CSEP describes how a service that supports privacy-preserving FL by
-offloading model aggregation and update to a Carbyne Stack Virtual Cloud can be
-implemented by integrating Carbyne Stack with the FL framework [Flower]. The
-proposal covers a basic scheme that protects data samples and the model from the
-central orchestrator. Variations of the basic scheme are also presented: one
-with a weaker security model that exposes the global model to the orchestrator
-and one with a stronger one that protects the model on the clients as well by
-using Confidential Computing techniques.
+offloading model aggregation to a Carbyne Stack Virtual Cloud can be implemented
+by integrating Carbyne Stack with the FL framework [Flower]. The proposal covers
+a basic scheme that protects data samples and the model from the central
+orchestrator. Variations of the basic scheme are also presented: one with a
+weaker security model that exposes the global model to the orchestrator and one
+with a stronger one that protects the model on the clients as well by using
+Confidential Computing techniques.
 
 ### User Stories
 
@@ -129,8 +132,12 @@ described in this CSEP focuses primarily on inference attacks. These attacks try
 to extract meaningful insights about the training data via analysis of the
 locally derived model updates. Nettle prevents this kind of attacks by hiding
 the locally computed model updates from the orchestrator by delegating the
-aggregation of updates to an MPC-powered distributed aggregator. Future
-iterations may also address other attack classes.
+aggregation of updates to an MPC-powered distributed aggregator.
+
+A variation of the basic Nettle scheme also protects against unauthorized model
+extraction by running client-side logic in Confidential Computing enclaves.
+
+Future iterations may also address other attack classes.
 
 ### Data Privacy
 
@@ -155,61 +162,131 @@ The model weights can either be represented by the MP-SPDZ `sfloat` or `sfix`
 [data types][mp-spdz-data-types]. While the former results in larger overheads,
 the latter leads to quantization errors and potentially degraded accuracy. For
 reasons of simplicity this first iteration of Nettle uses weights represented as
-`sfix` values. Conversion between the original and quantized weights
-representation is done by the clients.
+`sfloat` values.
 
 ### Flow
 
-The basic Nettle FL flow is described below. In the following with reference
-methods of the Flower [NumPyClient][flower-client] and
-[Strategy][flower-strategy] classes.
+The basic Nettle FL flow is depicted in the following sequence diagram and
+described in more detail below. The notation used in the diagram is as follows:
 
-1. The model owner uploads the initial global model to Amphora. For that purpose
-   the model is converted into an array of `sfix` values. The
-   `initialize_parameters` strategy callback is a no-op.
+- `G_i` denotes the global model parameters in iteration \`i\`\`.
+- The `CS(params)` denotes the representation of the model parameters `params`
+  as required by MP-SPDZ / Carbyne Stack.
+- `ID(s)` is the identifier of the secret `s` stored in the Amphora service.
+- `L_i_j` denotes the locally generated model update in training round _i_ on
+  client _j_.
 
-1. The orchestrator selects clients to participate in the upcoming training
-   round in the `configure_fit` strategy callback and sends the global model
-   parameters to the selected parties. This is done by transmitting a reference
-   to the Amphora secret containing the parameters but does _not_ include the
-   model parameters themselves. The reference is stored and transferred in the
-   dictionary that is part of the [`FitIns`][flower-fitins] data structure.
+In the following we reference methods of the Flower [NumPyClient][flower-client]
+and [Strategy][flower-strategy] classes.
 
-1. The clients receive the parameters in the Flower `set_parameters` callback.
-   They fetch the model from Amphora using the reference transmitted in step 2.
-   The values are translated from the MP-SPDZ `sfix` representation into the
-   representation required by Flower (see [here](#data-conversion) for more
-   details).
+<!-- markdownlint-disable MD013 -->
 
-1. The clients perform the training in the [`fit`][flower-fit] callback. After
-   local training has been concluded, the model parameters are translated into
-   the MP-SPDZ `sfix` representation and stored in Amphora. The reference to the
-   Amphora secret is sent to the server as part of the `metrics` dictionary
-   returned by the [`fit`][flower-fit] callback.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant c as Client
+    participant o as Orchestrator
+    participant os as Orchestrator Strategy
+    participant mo as Model Owner
+    participant vc as Aggregator
+    mo->>mo: Convert initial global model parameters G_0 to CS representation CS(G_0)
+    mo->>+vc: Upload CS(G_0) as secret shares
+    vc->>-mo: Return identifier ID(CS(G_0)) of secret containing CS(G_0)
+    mo->>+o: Trigger training with initial model by sending ID(CS(G_0))
+    loop Repeat until stop condition becomes satisfied (e.g. number of epochs N reached)
+        o->>+os: Invoke configure_fit
+        os->>os: Select clients C to participate in next round
+        par For each client c_j in C
+            os->>+c: Send secret identifier ID(CS(G_i)) for current global model CS(G_i)
+            c->>+vc: Request model parameters for ID(CS(G_i))
+            vc->>-c: Return model parameters into CS(G_i)
+            c->>c: Convert model parameters to ML framework representation G_i
+        end
+        os-->>-o: N/A
 
-1. The orchestrator receives the results, i.e., references to the secrets stored
-   in Amphora, from the clients in the `aggregate_fit` method of the strategy.
-   It triggers the Ephemeral execution that performs the secure aggregation and
-   global model update. The Amphora secret identifiers are used as inputs.
+        par For each client c_j in C
+            o->>+c: Invoke fit
+            c->>c: Perform training on local data creating updated local model with parameters L_i_j
+            c->>c: Convert local model parameters to CS representation CS(L_i_j)
+            c->>+vc: Upload CS(L_i_j) as secret shares
+            vc->>-c: Return identifier ID(CS(L_i_j)) of secret containing CS(L_i_j) 
+            c-->>-o: Return ID(CS(L_i_j)) 
+        end
 
-1. Flower supports the evaluation of the current model parameters by the
-   orchestrator in the `evaluate` strategy callback. In our setting the
-   coordinator doesn't know the model and hence is not able to perform the
-   evaluation. The `evaluate` method is a no-op. In future versions of Nettle
-   the evaluation could be delegated to the Virtual Cloud to be performed using
-   MPC.
+        o->>+os: Invoke aggregate_fit
+        os->>+vc: Invoke secure aggregation function with all local models L_i_j for all c_j in C
+        vc->>vc: Perform secure aggregation using MPC
+        vc->>-os: Return identifier ID(CS(G_i+1)) of secret containing the aggregated model CS(G_i+1)
+        os-->>-o: N/A
 
-1. The client-side evaluate phase implemented in the `configure_evaluate` and
-   `aggregate_evaluate` strategy callbacks is mostly unaffected by the fact that
-   Nettle outsources the aggregation and model update to an MPC-based
-   aggregator. The [`EvaluateIns`][flower-evaluateins] data structure produced
-   by `configure_evaluate` contains a dummy `Parameters` object only. The
-   reference to the Amphora secret containing the updated model parameters from
-   Step 5 can be stored in the `config` dictionary and is used on the client to
-   reconstruct the clear-text model.
+        o->>o: Use aggregated model as new global model, i.e., i = i + 1
+    end
+    o-->>-mo: Return identifier ID(CS(G_N-1)) of secret containing final global model parameters CS(G_N-1)
+    mo->>mo: Convert final global model parameters CS(G_N-1) to ML framework representation G_N-1
+```
 
-1. Go to step 2 or quit in case the configured number of training rounds have
-   been conducted.
+<!-- markdownlint-enable MD013 -->
+
+The following steps are performed by Nettle:
+
+- The model owner uploads the initial global model parameters to Amphora (steps
+  2-3). For that purpose the model is converted into an array of MP-SPDZ
+  `sfloat` values (step 1). The `initialize_parameters` Flower strategy callback
+  is a no-op.
+
+- The model owner triggers the execution of the Flower training (step 4)
+  providing the identifier of the initial model parameter secret as an input.
+
+- The orchestrator selects clients to participate in the upcoming training round
+  in the `configure_fit` strategy callback (step 6) and sends the initial global
+  model parameters to the selected clients (step 7). This is done by
+  transmitting a reference to the Amphora secret containing the parameters but
+  does _not_ include the model parameters themselves. The reference is stored
+  and transferred in the dictionary that is part of the
+  [`FitIns`][flower-fitins] data structure.
+
+- The clients receive the parameters in the Flower `set_parameters` callback.
+  They fetch the current global model parameters from Amphora (steps 8-9). The
+  values are translated from the MP-SPDZ `sfloat` representation into the
+  representation required by Flower (step 10, see [here](#data-conversion) for
+  more details).
+
+- The clients perform the training in the [`fit`][flower-fit] callback (steps
+  12-13). After local training has been concluded, the model parameters are
+  translated into the MP-SPDZ `sfloat` representation and stored in Amphora
+  (steps 15-16). The reference to the Amphora secret is sent to the orchestrator
+  as part of the `metrics` dictionary returned by the [`fit`][flower-fit]
+  callback (step 17).
+
+- The orchestrator receives the results, i.e., references to the secrets stored
+  in Amphora, from the clients in the `aggregate_fit` method of the strategy
+  (step 18). It triggers the Ephemeral execution that performs the secure
+  aggregation which yields the updated global model parameters (steps 19-21).
+  The Amphora identifiers for secrets containing the locally updated model
+  parameters for all clients are used as inputs.
+
+- Flower supports the evaluation of the current model parameters by the
+  orchestrator in the `evaluate` strategy callback. In our setting the
+  coordinator doesn't know the model and hence is not able to perform the
+  evaluation. The `evaluate` method is a no-op. In future versions of Nettle the
+  evaluation could be delegated to the aggregator to be performed using MPC.
+
+- The Flower client-side evaluate phase implemented in the `configure_evaluate`
+  and `aggregate_evaluate` strategy callbacks is mostly unaffected by the fact
+  that Nettle outsources the aggregation and model update to an MPC-based
+  aggregator. The [`EvaluateIns`][flower-evaluateins] data structure produced by
+  `configure_evaluate` contains a dummy `Parameters` object only. The reference
+  to the Amphora secret containing the updated model parameters from step 22 can
+  be stored in the `config` dictionary and is used on the client to reconstruct
+  the clear-text model.
+
+- Go to step 5 or quit in case the configured number of training rounds have
+  been conducted.
+
+- After the Flower training has been concluded, the orchestrator sends the
+  identifier of the Amphora secret that contains the model parameters of the
+  final model back to the model owner which converts it back into the
+  representation of the ML framework (steps 24-25).
 
 ### Open Questions
 
@@ -218,8 +295,8 @@ The aspects discussed in the following sections still have to be investigated.
 #### Data Conversion
 
 In the flow described above, data has to be converted between NumPy NdArrays and
-MP-SPDZ `sfix` values. This will probably be ML framework specific. We might go
-for PyTorch first. In that case the datatype stored in NdArrays is probably
+MP-SPDZ `sfloat` values. This will probably be ML framework specific. We might
+go for PyTorch first. In that case the datatype stored in NdArrays is probably
 `torch.float32`.
 
 ### Missing pieces
@@ -233,10 +310,10 @@ for PyTorch first. In that case the datatype stored in NdArrays is probably
 ### No Global Model Obliviousness
 
 In a variation of the above scheme, the system could be built in a way such that
-the orchestrator has access to the model parameters. In that case only the
-aggregation of the model updates is done using MPC by the aggregator. The model
-update is done by orchestrator and the exchange of model parameters with the
-clients is done in-band, i.e., via the regular Flower communication channels.
+the orchestrator has access to the global model parameters. In that case only
+the aggregation of the local model updates is done using MPC by the aggregator.
+The exchange of global model parameters with the clients is done in-band, i.e.,
+via the regular Flower communication channels.
 
 ### Client-side model protection
 
