@@ -23,13 +23,14 @@
     - [Aggregation Method](#aggregation-method)
     - [Weight Representation](#weight-representation)
     - [Flow](#flow)
+      - [Basic Flow](#basic-flow)
+      - [Flow with client-side model protection](#flow-with-client-side-model-protection)
+        - [Implementation Details](#implementation-details)
     - [Open Questions](#open-questions)
       - [Data Conversion](#data-conversion)
     - [Missing pieces](#missing-pieces)
   - [Alternatives](#alternatives)
     - [No Global Model Obliviousness](#no-global-model-obliviousness)
-    - [Client-side model protection](#client-side-model-protection)
-      - [Implementation Ideas](#implementation-ideas)
   - [Infrastructure Needed](#infrastructure-needed)
 
 <!-- TOC -->
@@ -107,7 +108,8 @@ This is an _optional_ section.
 
 - The **Model Owner** is the owner of the global model and the only party in the
   system with clear-text access to it (assuming
-  [client-side model protection](#client-side-model-protection) is implemented).
+  [client-side model protection](#flow-with-client-side-model-protection) is
+  implemented).
 
 - **Clients** are participants in the FL system that hold local data samples
   that are not shared with other system participants.
@@ -165,6 +167,8 @@ reasons of simplicity this first iteration of Nettle uses weights represented as
 `sfloat` values.
 
 ### Flow
+
+#### Basic Flow
 
 The basic Nettle FL flow is depicted in the following sequence diagram and
 described in more detail below. The notation used in the diagram is as follows:
@@ -288,63 +292,90 @@ The following steps are performed by Nettle:
   final model back to the model owner which converts it back into the
   representation of the ML framework (steps 24-25).
 
-### Open Questions
-
-The aspects discussed in the following sections still have to be investigated.
-
-#### Data Conversion
-
-In the flow described above, data has to be converted between NumPy NdArrays and
-MP-SPDZ `sfloat` values. This will probably be ML framework specific. We might
-go for PyTorch first. In that case the datatype stored in NdArrays is probably
-`torch.float32`.
-
-### Missing pieces
-
-- Flower is written in Python. As of today, Carbyne Stack has no Python Amphora
-  and Ephemeral Clients. A potential (hacky) fallback is to use the CS CLI
-  launched via the Python `subprocess` module.
-
-## Alternatives
-
-### No Global Model Obliviousness
-
-In a variation of the above scheme, the system could be built in a way such that
-the orchestrator has access to the global model parameters. In that case only
-the aggregation of the local model updates is done using MPC by the aggregator.
-The exchange of global model parameters with the clients is done in-band, i.e.,
-via the regular Flower communication channels.
-
-### Client-side model protection
+#### Flow with client-side model protection
 
 In settings where the model is of high value or otherwise sensitive, the model
 must be protected on the client-side as well. While in theory the whole training
 could be delegated to an MPC system as well, such an approach would have severe
 disadvantages: First, the benefits of data locality in FL schemes would be
-voided, as all data would have to be transmitted to the MPC system for
+voided, as all training data would have to be transmitted to the MPC system for
 processing. Second, the performance and cost of doing full NN training in MPC is
-still very high. Hence, Nettle doesn't implement such an approach.
+still very high. Hence, Nettle doesn't follow that approach but falls back to
+Confidential Computing for client-side model protection, thus creating a hybrid
+approach in which we apply the most secure technique that is fit for the
+respective job.
 
-Instead, Nettle uses Confidential Computing techniques to protect the model on
-the clients in this variation.
+That implies the following conceptual changes to the original system / flow
+described [above](#basic-flow):
 
-That implies the following changes to the original system / flow described
-[above](#flow):
+- The Nettle/Flower clients are executed in a Confidential Computing enclave via
+  the [Gramine] library OS. This protects the model from unauthorized access by
+  the operators of the clients.
+- Nettle uses a combination of zero knowledge proofs and remote attestation to
+  authenticate clients before admission to the FL system in the `configure_fit`
+  and `configure_evaluate` strategy callbacks. This allows Nettle to block out
+  clients not authorized by the model owner to participate in the distributed
+  training process.
+- The aggregator verifies that only those model updates are accepted that have
+  been created by clients knowing a secret created by the model owner. By using
+  ZK proofs a malicious orchestrator can not sneak a model update into the
+  process that is not coming from an authenticated client.
 
-1. The Nettle/Flower client is executed on top of the [Gramine] library OS.
-1. Nettle performs remote attestation before admitting a client to the FL system
-   which makes the client eligible for being selected in the `configure_fit` and
-   `configure_evaluate` strategy callbacks.
+The details of how the flow goes when client-side model protection is used is
+depicted in the following sequence diagram.
 
-The details of how Step 2 is implemented still have to be worked out.
+<!-- markdownlint-disable MD013 -->
 
-In case client-side model protection is used with the variation that does expose
-the model to the orchestrator (see [above](#no-global-model-obliviousness))
-[Gramine Secret Provisioning][gramine-secret-prov] can be used to attest the
-clients and inject a secret decryption key. That key is used to decrypt the
-model parameters that are transferred in encrypted form by the orchestrator.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant c as Client c_j
+    participant o as Orchestrator
+    participant os as Orchestrator Strategy
+    participant mo as Model Owner
+    participant vc as Aggregator
+    Note over c,vc: Initialize ZK proof subystem (e.g. curve and hash algorithm for a ZK based on ECDLP)
+    mo->>mo: Generate a random secret number s and signature sig(s) using ZK proof subsystem
+    mo->>o: Send sig(s)
+    mo->>vc: Deploy SecAgg(s) function
+    o->>o: Generate a server secret S and signature sig(S) using ZK proof subsystem
+    o->>o: Generate signed token t = sign(S, t)
+    loop For each client c_j in C 
+        mo->>c: Inject secret s into client enclave using remote attestation
+        break when remote attestation fails
+            mo->>mo: Continue with next client c_j+1
+        end
+    end
+    Note right of os: Step 6 of the Basic Flow is implemented by the following loop
+    loop For each client c_j in C 
+        os->>c: Sent token t
+        c->>c: Create proof p = sign(s, t) by signing token t with secret s
+        c->>os: Send p
+        os->>os: Verify that token t has not been tampered with via verify(token(p), sig(S))
+        alt verify(token(p), sig(S)) succeeds
+            os->>os: Verify the proof via verify(p, sig(s))
+            alt verify(p, sig(s)) succeeds
+                os->>os: Admit client c to system
+            end 
+        end
+    end
+    Note over c,vc: Perform Basic Flow until including step 14 with C containing only admitted clients. Instead of step 15 do
+    c->>c: Prepend s to CS(L_i_j)
+    c->>vc: Upload (s_j = s, CS(L_i_j)) as secret shares
+    Note over c,vc: Perform Basic Flow until including step 18. Instead of steps 19 and 20 do
+    os->>vc: Invoke secure aggregation function with all local models (s_j, L_i_j) for all c_j in C
+    vc->>vc: Verify that all s_j for all c_j in C are the same as the secret s in SecAgg(s)
+    break when the verification fails
+        vc->>o: send error
+    end
+    Note right of vc: Continue with Basic Flow from step 21 onwards 
+```
 
-#### Implementation Ideas
+<!-- markdownlint-enable MD013 -->
+
+##### Implementation Details
+
+TODO: Describe Flower integration in more detail
 
 The model owner is responsible for admitting clients to the system. The
 rationale for this as opposed to having this done by the orchestrator is that
@@ -376,6 +407,33 @@ deployed on a remote system. The admission flow is as follows:
 1. The client launches the Flower client that contacts the Flower server to join
    the FL system.
 
+### Open Questions
+
+The aspects discussed in the following sections still have to be investigated.
+
+#### Data Conversion
+
+In the flow described above, data has to be converted between NumPy NdArrays and
+MP-SPDZ `sfloat` values. This will probably be ML framework specific. We might
+go for PyTorch first. In that case the datatype stored in NdArrays is probably
+`torch.float32`.
+
+### Missing pieces
+
+- Flower is written in Python. As of today, Carbyne Stack has no Python Amphora
+  and Ephemeral Clients. A potential (hacky) fallback is to use the CS CLI
+  launched via the Python `subprocess` module.
+
+## Alternatives
+
+### No Global Model Obliviousness
+
+In a variation of the above scheme, the system could be built in a way such that
+the orchestrator has access to the global model parameters. In that case only
+the aggregation of the local model updates is done using MPC by the aggregator.
+The exchange of global model parameters with the clients is done in-band, i.e.,
+via the regular Flower communication channels.
+
 ## Infrastructure Needed
 
 - Repository for hosting the Nettle codebase
@@ -392,7 +450,6 @@ deployed on a remote system. The admission flow is as follows:
 [flower-strategy]: https://flower.dev/docs/implementing-strategies.html#implementing-strategies
 [gramine]: https://gramineproject.io/
 [gramine-secret-injection]: https://gramine.readthedocs.io/en/stable/tutorials/pytorch/index.html#end-to-end-confidential-pytorch-workflow
-[gramine-secret-prov]: https://gramine.readthedocs.io/en/latest/attestation.html#high-level-secret-provisioning-interface
 [gramine-secret-provisioning]: https://gramine.readthedocs.io/en/stable/attestation.html#high-level-secret-provisioning-interface
 [mp-spdz-data-types]: https://mp-spdz.readthedocs.io/en/latest/Compiler.html#basic-types
 [safelearn]: https://eprint.iacr.org/2021/386
