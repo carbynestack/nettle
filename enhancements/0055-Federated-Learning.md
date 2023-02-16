@@ -4,7 +4,7 @@
 
 <!-- TOC -->
 
-- [CSEP-0055: Privacy-Preserving Federated Learning](#csep-0055--privacy-preserving-federated-learning)
+- [CSEP-0055: Privacy-Preserving Federated Learning](#csep-0055-privacy-preserving-federated-learning)
   - [Summary](#summary)
     - [Namesake](#namesake)
   - [Motivation](#motivation)
@@ -25,7 +25,6 @@
     - [Flow](#flow)
       - [Basic Flow](#basic-flow)
       - [Flow with client-side model protection](#flow-with-client-side-model-protection)
-        - [Implementation Details](#implementation-details)
     - [Open Questions](#open-questions)
       - [Data Conversion](#data-conversion)
     - [Missing pieces](#missing-pieces)
@@ -301,9 +300,8 @@ disadvantages: First, the benefits of data locality in FL schemes would be
 voided, as all training data would have to be transmitted to the MPC system for
 processing. Second, the performance and cost of doing full NN training in MPC is
 still very high. Hence, Nettle doesn't follow that approach but falls back to
-Confidential Computing for client-side model protection, thus creating a hybrid
-approach in which we apply the most secure technique that is fit for the
-respective job.
+Confidential Computing for model protection, thus creating a hybrid approach in
+which we apply the most secure technique that is fit for the respective job.
 
 That implies the following conceptual changes to the original system / flow
 described [above](#basic-flow):
@@ -318,8 +316,13 @@ described [above](#basic-flow):
   training process.
 - The aggregator verifies that only those model updates are accepted that have
   been created by clients knowing a secret created by the model owner. By using
-  ZK proofs a malicious orchestrator can not sneak a model update into the
-  process that is not coming from an authenticated client.
+  ZK proofs to hide the secret from a malicious orchestrator, he can not sneak a
+  model update into the process that is not coming from an authenticated client.
+
+Note that it is the model owners responsibility and right to admit clients to
+the system. The rationale for this, as opposed to having this done by the
+orchestrator is that the model owner should be able to decide under which
+circumstances his sensitive model is deployed on a remote system.
 
 The details of how the flow goes when client-side model protection is used is
 depicted in the following sequence diagram.
@@ -337,9 +340,10 @@ sequenceDiagram
     Note over c,vc: Initialize ZK proof subystem (e.g. curve and hash algorithm for a ZK based on ECDLP)
     mo->>mo: Generate a random secret number s and signature sig(s) using ZK proof subsystem
     mo->>o: Send sig(s)
-    mo->>vc: Deploy SecAgg(s) function
+    mo->>vc: Store s as s_ref
+    mo->>vc: Deploy SecAgg(s_ref) function
+    mo->>mo: Start secret provisioning service for secret s
     o->>o: Generate a server secret S and signature sig(S) using ZK proof subsystem
-    o->>o: Generate signed token t = sign(S, t)
     loop For each client c_j in C 
         mo->>c: Inject secret s into client enclave using remote attestation
         break when remote attestation fails
@@ -347,24 +351,26 @@ sequenceDiagram
         end
     end
     Note right of os: Step 6 of the Basic Flow is implemented by the following loop
-    loop For each client c_j in C 
-        os->>c: Sent token t
-        c->>c: Create proof p = sign(s, t) by signing token t with secret s
-        c->>os: Send p
-        os->>os: Verify that token t has not been tampered with via verify(token(p), sig(S))
-        alt verify(token(p), sig(S)) succeeds
-            os->>os: Verify the proof via verify(p, sig(s))
-            alt verify(p, sig(s)) succeeds
-                os->>os: Admit client c to system
+    loop For each client c_j in C
+        o->>o: Generate signed token t_j_S = sign(S, t_j)
+        os->>c: Sent token t_j
+        c->>c: Create proof p_j = sign(s, t_j_S) by signing token t_j_S with secret s
+        c->>os: Send p_j
+        os->>os: Verify that token t_S has not been tampered with via verify(token(p_j), sig(S))
+        alt verify(token(p_j), sig(S)) succeeds
+            os->>os: Verify the proof via verify(p_j, sig(s))
+            alt verify(p_j, sig(s)) succeeds
+                os->>os: Admit client c_j to system
             end 
         end
     end
+    os->>os: Collect all admitted clients c_j into C
     Note over c,vc: Perform Basic Flow until including step 14 with C containing only admitted clients. Instead of step 15 do
     c->>c: Prepend s to CS(L_i_j)
     c->>vc: Upload (s_j = s, CS(L_i_j)) as secret shares
     Note over c,vc: Perform Basic Flow until including step 18. Instead of steps 19 and 20 do
     os->>vc: Invoke secure aggregation function with all local models (s_j, L_i_j) for all c_j in C
-    vc->>vc: Verify that all s_j for all c_j in C are the same as the secret s in SecAgg(s)
+    vc->>vc: Verify that all s_j for all c_j in C equal secret reference s_ref in SecAgg(s_ref)
     break when the verification fails
         vc->>o: send error
     end
@@ -373,39 +379,59 @@ sequenceDiagram
 
 <!-- markdownlint-enable MD013 -->
 
-##### Implementation Details
+The admission flow is as follows:
 
-TODO: Describe Flower integration in more detail
-
-The model owner is responsible for admitting clients to the system. The
-rationale for this as opposed to having this done by the orchestrator is that
-the model owner should be able to decide under which circumstances his model is
-deployed on a remote system. The admission flow is as follows:
-
-1. The model owner starts the Gramine
-   [secret provisioning][gramine-secret-provisioning] service which exposes an
-   endpoint that can be used by clients to get attested and to receive a secret
-   generated by the model owner.
-1. The client uses Gramine secret provisioning via secret injection prior to
-   application launch. The details how to achieve this are described
-   [here][gramine-secret-injection]. The credentials are provided via the
-   `SECRET_PROVISION_SECRET_STRING` environment variable that is transparently
-   initialized by Gramine after successful remote attestation. In case remote
-   attestation fails the secret is not injected and the client does not start.
-   If someone starts a non-protected Flower client, the client still can connect
-   to the Flower server but will never be selected for participating in a
-   training round. This is ensured as follows:
-   1. Successfully remote attested clients provide the received secret to the
-      orchestrator in the [`get_properties`][flower-get-properties] method of
-      the Flower `NumPyClient`.
-   1. The orchestrator uses a special [`Criterion`][flower-criterion] that
-      rejects any client that has not provided the correct secret. To check
-      that, the criterion implementation has access to a
-      [`ClientProxy`][flower-client-proxy] for each connected client. These
-      proxies can be used to query the properties provided by the client in the
-      previous step.
-1. The client launches the Flower client that contacts the Flower server to join
-   the FL system.
+- Model owner, orchestrator, and the clients initialize a zero-knowledge proof
+  system ZK (e.g., based on ECDLP).
+- The model owner generates a secret s and a signature sig(s) via ZK (step 1).
+  sig(s) is sent to the orchestrator (step 2) to be used later on to perform
+  client authentication by verifying the client provided ZK proofs.
+- The secret s is sent to the aggregator and stored in secret shared form as
+  s_ref (step 3).
+- The model owner deploys the secure aggregation function SecAgg(s_ref) on the
+  aggregator (step 4). SecAgg is a function that computes an aggregate model
+  from the set of model updates received from clients in a FL round. SecAgg is
+  parameterized by the secret s_ref. By comparing s_ref to the secrets provided
+  by the clients as part of the model updates, the aggregator can exclude model
+  updates from non-authenticated clients.
+- The model owner starts a Gramine
+  [secret provisioning][gramine-secret-provisioning] service (step 5) which
+  exposes a network endpoint that can be used by clients to get attested and, if
+  successful, to receive the secret s generated by the model owner.
+- The orchestrator generates a server secret S and a corresponding signature
+  sig(S) (step 6) using ZK.
+- Each of the clients uses Gramine secret provisioning via secret injection
+  prior to application launch (step 7) to get the secret s. The details how to
+  achieve this are described [here][gramine-secret-injection]. The credentials
+  are provided via the `SECRET_PROVISION_SECRET_STRING` environment variable
+  that is transparently initialized by Gramine after successful remote
+  attestation. In case remote attestation fails the secret is not injected and
+  the client does not start. If someone starts a non-protected Flower client,
+  the client still can connect to the Flower orchestrator but will never be
+  selected for participation in a training round by an honest orchestrator.
+- The orchestrator uses the secret S to create a signed token t_j_S by signing a
+  random client-specific token t_j with S (step 9) using ZK.
+- The signed token t_j_S is sent as a challenge to client c_j (step 10).
+- Client c_j creates a proof p_j = sign(s, t_j_S) by signing the token t_j_S
+  with the secret s (step 11) and send p_j to the orchestrator (step 12). The
+  transfer happens in the [`get_properties`][flower-get-properties] method of
+  the Flower `NumPyClient`.
+- The orchestrator first checks that the token t_j_S has not been tampered with
+  by verify t_j_S using sig(S) (step 13). If that is successful the proof p_j is
+  verified using sig(s) (step 14). Only in case both verification steps are
+  successful, the client c_j is admitted to the system (step 15).
+- The orchestrator uses a special [`Criterion`][flower-criterion] that rejects
+  any client that was not able to prove possession of the secret (step 16). To
+  check that, the criterion implementation has access to a
+  [`ClientProxy`][flower-client-proxy] for each connected client. These proxies
+  can be used to query the properties provided by the client including the proof
+  p_j in step 12.
+- To protect against a malicious orchestrator colluding with malicious clients,
+  model updates sent to the aggregator are prepended with the secret by the
+  clients (step 17) before uploading to the aggregator (step 18). This allows
+  the aggregator to reject or ignore model updates from malicious clients by
+  comparing the secret s_j to the reference secret `s_ref` (step 18) provided by
+  the model owner initially (step 3).
 
 ### Open Questions
 
