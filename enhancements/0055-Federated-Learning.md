@@ -356,7 +356,7 @@ sequenceDiagram
         os->>c: Sent token t_j_S
         c->>c: Create proof p_j = sign(s, t_j_S) by signing token t_j_S with secret s
         c->>os: Send p_j
-        os->>os: Verify that token t_S has not been tampered with via verify(token(p_j), sig(S))
+        os->>os: Verify that token t_j_S has not been tampered with via verify(token(p_j), sig(S))
         alt verify(token(p_j), sig(S)) succeeds
             os->>os: Verify the proof via verify(p_j, sig(s))
             alt verify(p_j, sig(s)) succeeds
