@@ -353,7 +353,7 @@ sequenceDiagram
     Note right of os: Step 6 of the Basic Flow is implemented by the following loop
     loop For each client c_j in C
         o->>o: Generate signed token t_j_S = sign(S, t_j)
-        os->>c: Sent token t_j
+        os->>c: Sent token t_j_S
         c->>c: Create proof p_j = sign(s, t_j_S) by signing token t_j_S with secret s
         c->>os: Send p_j
         os->>os: Verify that token t_S has not been tampered with via verify(token(p_j), sig(S))
