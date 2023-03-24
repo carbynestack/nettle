@@ -20,6 +20,19 @@ attacks.
 
 ## Usage
 
+### Setup
+
+To set up a virtual environment and install dependencies, invoke the following
+commands from the root of the Nettle repository:
+
+```shell
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Running an Experiment
+
 To run a Nettle Federated Learning experiment using CIFAR-10, you first have to
 start a Nettle Orchestrator using
 
