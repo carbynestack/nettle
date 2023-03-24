@@ -108,11 +108,11 @@ class MpcStrategy(FedAvg):
         return Parameters([], "numpy.ndarray"), {}
 
     @property
-    def amphora_model_id(self) -> uuid.UUID:
+    def model_id(self) -> uuid.UUID:
         return self.__model_id
 
-    @amphora_model_id.setter
-    def amphora_model_id(self, value: uuid.UUID):
+    @model_id.setter
+    def model_id(self, value: uuid.UUID):
         self.__model_id = value
 
     def __on_any_config_fn(self, round: int) -> Dict[str, str]:

@@ -92,7 +92,7 @@ class Orchestrator(model_training_pb2_grpc.ModelTrainingServicer):
             strategy=strategy,
         )
         training_result = model_training_pb2.TrainModelResult(
-            finalModelSecretId=str(strategy.amphora_model_id)
+            finalModelSecretId=str(strategy.model_id)
         )
         log(
             INFO,
