@@ -22,8 +22,8 @@ attacks.
 
 ### Setup
 
-To set up a virtual environment and install dependencies, invoke the following
-commands from the root of the Nettle repository:
+To set up a virtual environment and install the dependencies, invoke the
+following commands from the root of the Nettle repository:
 
 ```shell
 python3 -m venv .venv
@@ -56,7 +56,7 @@ PYTHONPATH=$(pwd)/../.. PYTHONUNBUFFERED=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATIO
 
 <!-- markdownlint-enable MD013 -->
 
-Any finally start two Nettle Clients by executing the following twice
+Any finally start two Nettle Clients by executing the following commands twice
 
 <!-- markdownlint-disable MD013 -->
 
@@ -68,6 +68,26 @@ PYTHONPATH=$(pwd)/../.. PYTHONUNBUFFERED=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATIO
 <!-- markdownlint-enable MD013 -->
 
 ## Development
+
+### Dependency Management
+
+> **IMPORTANT**: Please make sure that the virtual environment is activated. See
+> the [setup](#setup) section for details.
+
+Dependencies are managed using
+[pip-tools](https://github.com/jazzband/pip-tools). They are declared in the
+`requirements.in` file. _After an update_ the corresponding `requirements.txt`
+file can be generated using
+
+```shell
+pip-compile
+```
+
+Syncing installed packages in the virtual environment is done using
+
+```shell
+pip-sync
+```
 
 ### Generating the gRPC code
 
