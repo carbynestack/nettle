@@ -30,7 +30,7 @@ class TestMpSpdzMpcClient(unittest.TestCase):
         )
 
     def test_add_secrets(self):
-        self.client.add_program("mp_spdz_mpc_client_test_add.mpc")
+        self.client.add_program("mpc_client/mp_spdz_mpc_client_test_add.mpc")
         input_a_id = self.client.create_secret([1])
         input_b_id = self.client.create_secret([2])
         result_id = self.client.execute(
@@ -44,7 +44,7 @@ class TestMpSpdzMpcClient(unittest.TestCase):
         )
 
     def test_array_output(self):
-        self.client.add_program("mp_spdz_mpc_client_test_array_output.mpc")
+        self.client.add_program("mpc_client/mp_spdz_mpc_client_test_array_output.mpc")
         result_id = self.client.execute([], "mp_spdz_mpc_client_test_array_output")
         output = self.client.get_secret(result_id)
         self.assertEqual([1, 2], output[0], "array output must be returned correctly")
