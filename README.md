@@ -11,10 +11,17 @@ reconstruction attacks. In the future, it will also prevent unauthorized model
 extraction.
 
 See [CSEP-0055: Privacy-Preserving Federated Learning][csep-055] for details.
+Please note that Nettle currently implements only a subset of the system
+proposed in CSEP-0055. In particular, the model plane protection mechanisms
+based on Confidential Computing are still under active development.
+
+> **DISCLAIMER**: Nettle is work-in-progress *alpha* software. The software is
+> not ready for production use. It has neither been developed nor tested for a
+> specific use case.
 
 ## Namesake
 
-A _nettle_ is a chiefly coarse herb armed with stinging hairs. Carbyne Stack
+A **nettle** is a chiefly coarse herb armed with stinging hairs. Carbyne Stack
 Nettle is a fortified version of Flower that can resist certain kinds of
 attacks.
 
@@ -28,17 +35,31 @@ following commands from the root of the Nettle repository:
 ```shell
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install pip-tools
 pip-sync
+```
+
+To install dependencies and to build the Docker images required for running
+Nettle in [MP-SPDZ](https://github.com/data61/MP-SPDZ)-based emulation mode,
+invoke
+
+```shell
+make -j
 ```
 
 ### Running an Experiment
 
-To run a Nettle Federated Learning experiment using CIFAR-10, you first have to
-start a Nettle Orchestrator using
+> **NOTE**: Remember that you have to activate the virtual environment in each
+> shell launched subsequently.
+
+To run a Nettle Federated Learning experiment using CIFAR-10 with secure
+aggregation performed locally using a Docker-hosted 2-party MP-SPDZ backend, you
+first have to start a Nettle Orchestrator using
 
 <!-- markdownlint-disable MD013 -->
 
 ```shell
+source .venv/bin/activate
 cd orchestrator
 PYTHONPATH=$(pwd)/.. PYTHONUNBUFFERED=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python3 orchestrator.py
 ```
@@ -50,6 +71,7 @@ After that, launch the CIFAR-10 model owner using
 <!-- markdownlint-disable MD013 -->
 
 ```shell
+source .venv/bin/activate
 cd examples/cifar_10
 PYTHONPATH=$(pwd)/../.. PYTHONUNBUFFERED=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python3 cifar_model_owner.py
 ```
@@ -61,6 +83,7 @@ Any finally start two Nettle Clients by executing the following commands twice
 <!-- markdownlint-disable MD013 -->
 
 ```shell
+source .venv/bin/activate
 cd examples/cifar_10
 PYTHONPATH=$(pwd)/../.. PYTHONUNBUFFERED=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python3 cifar_client.py
 ```
@@ -76,7 +99,7 @@ PYTHONPATH=$(pwd)/../.. PYTHONUNBUFFERED=1 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATIO
 
 Dependencies are managed using
 [pip-tools](https://github.com/jazzband/pip-tools). They are declared in the
-`requirements.in` file. _After an update_ the corresponding `requirements.txt`
+`requirements.in` file. **After an update** the corresponding `requirements.txt`
 file can be generated using
 
 ```shell
@@ -101,7 +124,7 @@ python3 -m grpc_tools.protoc -I protos --pyi_out=generated \
 
 ## License
 
-Carbyne Stack _Nettle_ is open-sourced under the Apache License 2.0. See the
+Carbyne Stack **Nettle** is open-sourced under the Apache License 2.0. See the
 [LICENSE](LICENSE) file for details.
 
 ### 3rd Party Licenses
