@@ -1,0 +1,137 @@
+[
+  {
+    "_comment": "This file is handcrafted from the requirements.txt at the root of the repository"
+  },
+  {
+    "name": "certifi",
+    "version": "2022.12.7",
+    "license": "MPL-2.0-no-copyleft-exception"
+  },
+  {
+    "name": "charset-normalizer",
+    "version": "3.1.0",
+    "license": "MIT"
+  },
+  {
+    "name": "click",
+    "version": "8.1.3",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "docker",
+    "version": "5.0.3",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "flwr",
+    "version": "1.3.0",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "grpcio",
+    "version": "1.47.5",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "grpcio-tools",
+    "version": "1.47.5",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "idna",
+    "version": "3.4",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "iterators",
+    "version": "0.0.2",
+    "license": "MIT"
+  },
+  {
+    "name": "numpy",
+    "version": "1.22.4",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "nvidia-cublas-cu11",
+    "version": "11.10.3.66",
+    "license": "NVIDIA Software License Agreement and CUDA Supplement to Software License Agreement",
+    "_comment": "License file has been copied from the Python package in the virtual environment."
+  },
+  {
+    "name": "nvidia-cuda-nvrtc-cu11",
+    "version": "11.7.99",
+    "license": "NVIDIA Software License Agreement and CUDA Supplement to Software License Agreement",
+    "_comment": "License file has been copied from the Python package in the virtual environment."
+  },
+  {
+    "name": "nvidia-cuda-runtime-cu11",
+    "version": "11.7.99",
+    "license": "NVIDIA Software License Agreement and CUDA Supplement to Software License Agreement",
+    "_comment": "License file has been copied from the Python package in the virtual environment."
+  },
+  {
+    "name": "nvidia-cudnn-cu11",
+    "version": "8.5.0.96",
+    "license": "NVIDIA Software License Agreement and CUDA Supplement to Software License Agreement",
+    "_comment": "License file has been copied from the Python package in the virtual environment."
+  },
+  {
+    "name": "pillow",
+    "version": "9.4.0",
+    "license": "HPND"
+  },
+  {
+    "name": "protobuf",
+    "version": "3.20.3",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "requests",
+    "version": "2.28.2",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "six",
+    "version": "1.16.0",
+    "license": "MIT"
+  },
+  {
+    "name": "torch",
+    "version": "1.13.1",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "torchvision",
+    "version": "0.14.1",
+    "license": "BSD-3-Clause"
+  },
+  {
+    "name": "tqdm",
+    "version": "4.64.1",
+    "licenses": [
+      "MPL-2.0-no-copyleft-exception",
+      "MIT"
+    ]
+  },
+  {
+    "name": "typing-extensions",
+    "version": "4.5.0",
+    "license": "PSF-2.0"
+  },
+  {
+    "name": "urllib3",
+    "version": "1.26.15",
+    "license": "MIT"
+  },
+  {
+    "name": "websocket-client",
+    "version": "1.5.1",
+    "license": "Apache-2.0"
+  },
+  {
+    "name": "wheel",
+    "version": "0.40.0",
+    "license": "MIT"
+  }
+]

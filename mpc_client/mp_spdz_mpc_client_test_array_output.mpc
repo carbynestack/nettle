@@ -1,0 +1,12 @@
+#
+# Copyright (c) 2023 - for information on the respective copyright owner
+# see the NOTICE file and/or the repository https://github.com/carbynestack/nettle.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+arr = sint.Array(2)
+arr[0] = sint(1)
+arr[1] = sint(2)
+
+arr.print_reveal_nested()
