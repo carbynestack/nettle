@@ -6,7 +6,7 @@
   "packages": {
     ".": {
       "package-name": "nettle",
-      "release-type": "python",
+      "release-type": "python"
     }
   }
 }
