@@ -49,6 +49,7 @@ repos:
         - "80"
       additional_dependencies:
         - mdformat-gfm
+      exclude: ^3RD-PARTY-LICENSES/.*$
 - repo: https://github.com/igorshubovych/markdownlint-cli
   rev: v0.33.0
   hooks:
