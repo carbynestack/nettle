@@ -4,6 +4,7 @@
 [![codecov](https://codecov.io/gh/carbynestack/nettle/branch/master/graph/badge.svg?token=fSu1ncbt6H)](https://codecov.io/gh/carbynestack/nettle)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/52418a64dcd54f02b3f358576a14fb04)](https://app.codacy.com/gh/carbynestack/nettle/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Known Vulnerabilities](https://snyk.io/test/github/carbynestack/nettle/badge.svg)](https://snyk.io/test/github/carbynestack/nettle)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
